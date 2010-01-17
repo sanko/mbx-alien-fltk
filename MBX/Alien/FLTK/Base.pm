@@ -419,8 +419,7 @@ int main ( ) {
             print 'Failed to cd to ' . $self->fltk_dir() . ' to return home';
             exit 0;
         }
-        $self->quiet(0);
-        return @{$self->notes('libs')} ? 1 : 0;
+        return scalar @{$self->notes('libs')};
     }
 
     # Module::Build actions
