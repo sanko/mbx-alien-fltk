@@ -705,7 +705,11 @@ END
             printf 'Updating %s config... ', $self->module_name;
             my $me        = $self->notes('config_path');
             my $mode_orig = 0644;
-            if (-d $me) {
+            if (!-d _dir($me)) {
+                require File::Path;
+                File::Path::make_path(_dir($me));
+            }
+            elsif (-d $me) {
                 $mode_orig = (stat $me)[2] & 07777;
                 chmod($mode_orig | 0222, $me);    # Make it writeable
             }
