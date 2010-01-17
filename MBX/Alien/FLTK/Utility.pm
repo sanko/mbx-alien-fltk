@@ -65,22 +65,6 @@ package inc::MBX::Alien::FLTK::Utility;
     sub _dir   { File::Basename::dirname(shift); }
     sub _split { File::Spec->splitpath(@_) }
 
-    sub _find_lib {
-        my ($file, $dir) = @_;
-
-        #$file =~ s[([\+\*\.])][\\$1]g;
-        $file = 'lib' . $file . $Config{'_a'};
-        $dir = join ' ', ($dir || ''), $Config{'libpth'};
-        $dir =~ s|\s+| |g;
-        warn $dir;
-        for my $test (split m[\s+]m, $dir) {
-            warn '    =>' . canonpath($test . '/' . $file) . '<=';
-            die 'Worked!' if -e canonpath($dir . '/' . $file);
-            return canonpath($test) if -e canonpath($dir . '/' . $file);
-        }
-        return;
-    }
-
     sub find_lib {
         my ($find, $dir) = @_;
         no warnings 'File::Find';
