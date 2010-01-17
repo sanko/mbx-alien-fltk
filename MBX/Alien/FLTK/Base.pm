@@ -17,11 +17,11 @@ package inc::MBX::Alien::FLTK::Base;
         $self->depends_on('extract_fltk');
         return
             _abs(_path($self->notes('extract'),
-                      (      'fltk-'
-                           . $self->notes('branch') . '-r'
-                           . $self->notes('svn')
-                      ),
-                      $extra || ()
+                       (      'fltk-'
+                            . $self->notes('branch') . '-r'
+                            . $self->notes('svn')
+                       ),
+                       $extra || ()
                  )
             );
     }
@@ -31,7 +31,7 @@ package inc::MBX::Alien::FLTK::Base;
         my $arch = $args->{'output'};
         my @cmd = ($self->notes('AR'), $arch, @{$args->{'objects'}});
         print STDERR "@cmd\n" if !$self->quiet;
-        return inc::MBX::Alien::FLTK::Utility::run(@cmd);
+        return inc::MBX::Alien::FLTK::Utility::run(@cmd) ? $arch : ();
     }
 
     sub test_exe {
@@ -130,12 +130,12 @@ package inc::MBX::Alien::FLTK::Base;
             wanted => sub {
                 return if -d;
                 $self->copy_if_modified(
-                                      from => $File::Find::name,
-                                      to   => _path(
+                                     from => $File::Find::name,
+                                     to   => _path(
                                                  $headers_share,
                                                  $self->notes('headers_path'),
                                                  $File::Find::name
-                                      )
+                                     )
                 );
             },
             no_chdir => 1
@@ -359,8 +359,8 @@ int main ( ) {
         my $libs = $self->notes('libs_source');
         for my $lib (sort { lc $a cmp lc $b } keys %$libs) {
             print "Building $lib...\n";
-            if (!chdir _path($build->fltk_dir(), $libs->{$lib}{'directory'})) {
-                printf 'Cannot chdir to %s to build %s',
+            if (!chdir _path($build->fltk_dir(), $libs->{$lib}{'directory'}))
+            {   printf 'Cannot chdir to %s to build %s',
                     _path($build->fltk_dir(), $libs->{$lib}{'directory'}),
                     $lib;
                 exit 0;
@@ -621,8 +621,9 @@ END
                 };
             return;
         }
-        $self->notes('extract'  => $args{'to'});
-        $self->notes('snapshot_path' => $args{'from'});  # If used from commandline
+        $self->notes('extract'       => $args{'to'});
+        $self->notes('snapshot_path' => $args{'from'})
+            ;    # If used from commandline
         $self->add_to_cleanup($ae->extract_path);
         print "done.\n";
         return 1;
@@ -756,9 +757,9 @@ END
         }
         for my $lib (@{$self->notes('libs')}) {
             $self->copy_if_modified(
-                             from   => $lib,
-                             to_dir => _path($self->base_dir(), qw[share libs])
-            )
+                            from   => $lib,
+                            to_dir => _path($self->base_dir(), qw[share libs])
+            );
         }
         if (!chdir $self->base_dir()) {
             print 'Failed to cd to base directory';
