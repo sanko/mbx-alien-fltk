@@ -1,11 +1,11 @@
-package MBX::Alien::FLTK;
+package inc::MBX::Alien::FLTK;
 {
     use strict;
     use warnings;
     use Config qw[%Config];
     use Module::Build;
-    use lib '../..';
-    use base 'MBX::Alien::FLTK::Base';
+    use lib '../';
+    use base 'inc::MBX::Alien::FLTK::Base';
     use vars qw[@ISA];
 
     sub new {
@@ -35,10 +35,10 @@ package MBX::Alien::FLTK;
              : ()
             )
             );
-        my $platform = 'MBX::Alien::FLTK::Platform';
+        my $platform = 'inc::MBX::Alien::FLTK::Platform';
         for my $qual (@platform) {
             $platform .= '::' . $qual;
-            eval "use $platform";
+            eval "require $platform";
             next if $@;
             unshift @ISA, $platform;
         }
@@ -53,10 +53,10 @@ package MBX::Alien::FLTK;
     sub resume {
         my $self      = shift->SUPER::resume(@_);
         my $platform  = $self->notes('platform');
-        my $_platform = 'MBX::Alien::FLTK::Platform';
+        my $_platform = 'inc::MBX::Alien::FLTK::Platform';
         for my $qual (@$platform) {
             $_platform .= '::' . $qual;
-            eval "use $_platform";
+            eval "require $_platform";
             next if $@;
             unshift @ISA, $_platform;
         }
@@ -87,6 +87,6 @@ Creative Commons Attribution-Share Alike 3.0 License. See
 http://creativecommons.org/licenses/by-sa/3.0/us/legalcode.  For
 clarification, see http://creativecommons.org/licenses/by-sa/3.0/us/.
 
-=for git $Id$
+=for git $Id: FLTK.pm a97e5a4 2009-10-25 14:34:56Z sanko@cpan.org $
 
 =cut

@@ -1,4 +1,4 @@
-package MBX::Alien::FLTK::Utility;
+package inc::MBX::Alien::FLTK::Utility;
 {
     use strict;
     use warnings;
@@ -100,12 +100,23 @@ package MBX::Alien::FLTK::Utility;
 
     sub find_h {
         my ($file, $dir) = @_;
-        $dir = join ' ', ($dir || ''), $Config{'incpath'}, $Config{'usrinc'};
-        $dir =~ s|\s+| |g;
-        for my $test (split m[\s+]m, $dir) {
-            return canonpath($test) if -e canonpath($test . '/' . $file);
-        }
-        return;
+        no warnings 'File::Find';
+        $dir ||= $Config{'incpath'} . ' ' . $Config{'usrinc'};
+        $dir  = canonpath($dir);
+        $file = canonpath($file);
+        my $h;
+        find(
+            {wanted => sub {
+                 return if !-d $_;
+                 $h = canonpath(rel2abs($_))
+                     if -f _dir($_, $file);
+             },
+             no_chdir => 1
+            },
+            split ' ',
+            $dir
+        ) if $dir;
+        return $h;
     }
     1;
 }
@@ -132,6 +143,6 @@ Creative Commons Attribution-Share Alike 3.0 License. See
 http://creativecommons.org/licenses/by-sa/3.0/us/legalcode.  For
 clarification, see http://creativecommons.org/licenses/by-sa/3.0/us/.
 
-=for git $Id$
+=for git $Id: Utility.pm 2fbc10d 2009-09-18 03:50:45Z sanko@cpan.org $
 
 =cut

@@ -1,21 +1,20 @@
-package MBX::Alien::FLTK::Platform::Windows::CygWin;
+package inc::MBX::Alien::FLTK::Platform::Windows::CygWin;
 {
     use strict;
     use warnings;
     use Carp qw[];
     use Config qw[%Config];
-    use lib qw[.. ../../../../..];
-    use MBX::Alien::FLTK::Utility
+    use inc::MBX::Alien::FLTK::Utility
         qw[_o _a _dir _rel _abs find_h find_lib can_run];
-    use MBX::Alien::FLTK;
-    use base 'MBX::Alien::FLTK::Platform::Windows';
+    use inc::MBX::Alien::FLTK;
+    use base 'inc::MBX::Alien::FLTK::Platform::Windows';
     $|++;
 
     sub configure {
         my ($self) = @_;
         $self->SUPER::configure() || return 0;    # Get basic config data
         print "Gathering CygWin specific configuration data...\n";
-        {    # Taken from MBX::Alien::FLTK::Platform::Unix
+        {    # Taken from inc::MBX::Alien::FLTK::Platform::Unix
             print
                 'Checking whether we have the POSIX compatible scandir() prototype... ';
             my $obj = $self->compile({code => <<'' });
@@ -63,6 +62,6 @@ Creative Commons Attribution-Share Alike 3.0 License. See
 http://creativecommons.org/licenses/by-sa/3.0/us/legalcode.  For
 clarification, see http://creativecommons.org/licenses/by-sa/3.0/us/.
 
-=for git $Id$
+=for git $Id: CygWin.pm fb39021 2009-11-02 21:07:09Z sanko@cpan.org $
 
 =cut

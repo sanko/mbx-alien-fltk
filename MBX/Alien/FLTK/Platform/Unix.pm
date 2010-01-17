@@ -1,14 +1,13 @@
-package MBX::Alien::FLTK::Platform::Unix;
+package inc::MBX::Alien::FLTK::Platform::Unix;
 {
     use strict;
     use warnings;
     use Carp qw[];
     use Config qw[%Config];
-    use lib qw[.. ../../../.. inc];
-    use MBX::Alien::FLTK::Utility
+    use inc::MBX::Alien::FLTK::Utility
         qw[_o _a _dir _rel _abs find_h find_lib can_run];
-    use MBX::Alien::FLTK;
-    use base 'MBX::Alien::FLTK::Base';
+    use inc::MBX::Alien::FLTK;
+    use base 'inc::MBX::Alien::FLTK::Base';
     $|++;
 
     sub configure {
@@ -38,6 +37,49 @@ package MBX::Alien::FLTK::Platform::Unix;
         print "have ndir.h... \n";
         $self->notes('config')->{'HAVE_NDIR_H'}
             = (find_h('ndir.h') ? 1 : undef);
+        {
+            print 'Checking if we have scandir... ';
+            my $obj = $self->compile({code => <<''});
+/* Define scandir to an innocuous variant, in case <limits.h> declares scandir.
+   For example, HP-UX 11i <limits.h> declares gettimeofday.  */
+#define scandir innocuous_scandir
+/* System header to define __stub macros and hopefully few prototypes,
+    which can conflict with char scandir (); below.
+    Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
+    <limits.h> exists even on freestanding compilers.  */
+#ifdef __STDC__
+# include <limits.h>
+#else
+# include <assert.h>
+#endif
+#undef scandir
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char scandir ();
+/* The GNU C library defines this for functions which it implements
+    to always fail with ENOSYS.  Some functions are actually named
+    something starting with __ and the normal name is an alias.  */
+#if defined __stub_scandir || defined __stub___scandir
+choke me
+#endif
+int main ( ) {
+    return scandir ();
+    return 0;
+}
+
+            if ($obj ? 1 : 0) {
+                print "yes\n";
+                $self->notes('config')->{'HAVE_SCANDIR'} = 1;
+            }
+            else {
+                print "no\n";
+                $self->notes('config')->{'HAVE_SCANDIR'} = undef;
+            }
+        }
         {
             print
                 'Checking whether we have the POSIX compatible scandir() prototype... ';
@@ -364,6 +406,6 @@ Creative Commons Attribution-Share Alike 3.0 License. See
 http://creativecommons.org/licenses/by-sa/3.0/us/legalcode.  For
 clarification, see http://creativecommons.org/licenses/by-sa/3.0/us/.
 
-=for git $Id$
+=for git $Id: Unix.pm 84504b8 2009-10-27 21:17:03Z sanko@cpan.org $
 
 =cut

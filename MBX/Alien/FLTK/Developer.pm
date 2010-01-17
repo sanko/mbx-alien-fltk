@@ -1,4 +1,4 @@
-package MBX::Alien::FLTK::Developer;
+package inc::MBX::Alien::FLTK::Developer;
 {
     use strict;
     use warnings;
@@ -6,12 +6,11 @@ package MBX::Alien::FLTK::Developer;
     use Config qw[%Config];
     use ExtUtils::ParseXS qw[];
     use ExtUtils::CBuilder qw[];
-    use lib qw[../../../../inc];
-    use MBX::Alien::FLTK::Utility
+    use inc::MBX::Alien::FLTK::Utility
         qw[_o _a _dir _file _rel _abs _split _exe find_h find_lib can_run];
     use File::Find qw[find];
     use File::Path qw[make_path];
-    use base 'MBX::Alien::FLTK';
+    use base 'inc::MBX::Alien::FLTK';
 
     sub make_tarball {
         my ($self, $dir, $file, $quiet) = @_;
@@ -265,6 +264,6 @@ Creative Commons Attribution-Share Alike 3.0 License. See
 http://creativecommons.org/licenses/by-sa/3.0/us/legalcode.  For
 clarification, see http://creativecommons.org/licenses/by-sa/3.0/us/.
 
-=for git $Id$
+=for git $Id: Developer.pm 999e422 2009-11-02 18:51:07Z sanko@cpan.org $
 
 =cut

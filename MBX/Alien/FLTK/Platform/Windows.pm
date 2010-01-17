@@ -1,14 +1,13 @@
-package MBX::Alien::FLTK::Platform::Windows;
+package inc::MBX::Alien::FLTK::Platform::Windows;
 {
     use strict;
     use warnings;
     use Carp qw[];
     use Config qw[%Config];
-    use lib qw[.. ../../../.. inc];
-    use MBX::Alien::FLTK::Utility
+    use inc::MBX::Alien::FLTK::Utility
         qw[_o _a _dir _rel _abs find_h find_lib can_run];
-    use MBX::Alien::FLTK;
-    use base 'MBX::Alien::FLTK::Base';
+    use inc::MBX::Alien::FLTK;
+    use base 'inc::MBX::Alien::FLTK::Base';
     $|++;
 
     sub configure {
@@ -90,6 +89,6 @@ Creative Commons Attribution-Share Alike 3.0 License. See
 http://creativecommons.org/licenses/by-sa/3.0/us/legalcode.  For
 clarification, see http://creativecommons.org/licenses/by-sa/3.0/us/.
 
-=for git $Id$
+=for git $Id: Windows.pm 347de4a 2009-10-09 00:59:57Z sanko@cpan.org $
 
 =cut
