@@ -116,23 +116,12 @@ package inc::MBX::Alien::FLTK::Base;
         return $exe;
     }
 
-    sub _archdir {
-        my ($self, $p) = @_;
-        my ($vol, $dir, $file) = File::Spec->splitpath($p);
-        return
-            File::Spec->catfile($self->install_destination('arch'),
-                                (split '::', $self->module_name),
-                                ,
-                                File::Spec->splitdir($dir),
-                                $file
-            );
-    }
-
     sub ACTION_copy_headers {
         my ($self) = @_;
         $self->depends_on('write_config_h');
         my $headers_location
             = _dir($self->fltk_dir(), $self->notes('headers_path'));
+        my $headers_share = _dir($self->base_dir(), qw[share include]);
         if (!chdir $headers_location) {
             printf 'Failed to cd to %s to copy headers', $headers_location;
             exit 0;
@@ -141,16 +130,12 @@ package inc::MBX::Alien::FLTK::Base;
             wanted => sub {
                 return if -d;
                 $self->copy_if_modified(
-                                  from => $File::Find::name,
-                                  to   => _dir(
-                                             $self->base_dir(),
-                                             qw[blib arch],
-                                             (split '::', $self->module_name),
-                                             'include',
-                                             'fltk-' . $self->notes('branch'),
-                                             $self->notes('headers_path'),
-                                             $File::Find::name
-                                  )
+                                      from => $File::Find::name,
+                                      to   => _dir(
+                                                 $headers_share,
+                                                 $self->notes('headers_path'),
+                                                 $File::Find::name
+                                      )
                 );
             },
             no_chdir => 1
@@ -160,21 +145,14 @@ package inc::MBX::Alien::FLTK::Base;
             print 'Failed to cd to fltk\'s include directory';
             exit 0;
         }
-        $self->copy_if_modified(
-                              from => 'config.h',
-                              to =>
-                                  _dir(
-                                  $self->base_dir(), qw[blib arch],
-                                  (split '::', $self->module_name), 'include',
-                                  'fltk-' . $self->notes('branch'), 'config.h'
-                                  )
-        );
-        print "Installing headers...\n" if !$self->quiet;
+        $self->copy_if_modified(from => 'config.h',
+                                to   => _dir($headers_share, 'config.h'));
+        print "Copying headers to sharedir...\n" if !$self->quiet;
         if (!chdir $self->base_dir()) {
             printf 'Failed to return to %s', $self->base_dir();
             exit 0;
         }
-        $self->notes(headers => $self->_archdir('include'));
+        $self->notes(headers => $headers_share);
         return 1;
     }
 
@@ -458,9 +436,8 @@ int main ( ) {
         printf "Fetching SVN snapshot %d... ", $self->notes('svn');
         my ($schemes, $exts, %mirrors)
             = ([qw[http ftp]], [qw[gz bz2]], _snapshot_mirrors());
-        my ($attempt, $total, $where)
-            = (0, scalar(@$schemes) * scalar(@$exts) * scalar(keys %mirrors),
-               undef);
+        my ($attempt, $total)
+            = (0, scalar(@$schemes) * scalar(@$exts) * scalar(keys %mirrors));
         my $mirrors = [keys %mirrors];
         {                                                      # F-Y shuffle
             my $i = @$mirrors;
@@ -469,7 +446,7 @@ int main ( ) {
                 @$mirrors[$i, $j] = @$mirrors[$j, $i];
             }
         }
-        my ($archive, $extention);
+        my ($dir, $archive, $extention);
     MIRROR: for my $mirror (@$mirrors) {
         EXT: for my $ext (@$exts) {
                 {
@@ -485,7 +462,7 @@ int main ( ) {
                             "(Found preexisting snapshot) ",
                             $to,
                             -s $to;
-                        $where     = $args{'to'};
+                        $dir       = $args{'to'};
                         $archive   = $to;
                         $extention = $ext;
                         last MIRROR;
@@ -502,20 +479,21 @@ int main ( ) {
                               $self->notes('branch'),
                               $self->notes('svn'), $ext
                         );
-                    $where = $ff->fetch(to => $args{'to'});
-                    if ($where and -f $where) {
+                    $archive = $ff->fetch(to => $args{'to'});
+                    if ($archive and -f $archive) {
                         $self->notes('snapshot_mirror_uri'      => $ff->uri);
                         $self->notes('snapshot_mirror_location' => $mirror);
                         $archive = _abs(sprintf '%s/fltk-%s-r%d.tar.%s',
-                                        $where, $self->notes('branch'),
+                                        $args{'to'}, $self->notes('branch'),
                                         $self->notes('svn'), $ext);
                         $extention = $ext;
+                        $dir       = $args{'to'};
                         last MIRROR;
                     }
                 }
             }
         }
-        if (!$where) {    # bad news
+        if (!$archive) {    # bad news
             my (@urls, $i);
             for my $ext (@$exts) {
                 for my $mirror (sort values %mirrors) {
@@ -549,7 +527,7 @@ END
             $self->dispatch('check_errors');
         }
         print "done.\n";
-        $self->notes('snapshot' => $args{'to'});
+        $self->notes('snapshot_dir' => $args{'to'});
         {
             require Digest::MD5;
             print 'Validating archive... ';
@@ -594,8 +572,9 @@ END
             #unlink $archive;
             $self->dispatch('fetch_fltk');
         }
-        $self->notes('snapshot_path' => $archive);   # Unused but good to know
-             #$self->add_to_cleanup($where);
+        $self->notes('snapshot_path' => $archive);
+        $self->notes('snapshot_dir'  => $dir);       # Unused but good to know
+             #$self->add_to_cleanup($dir);
         return 1;
     }
 
@@ -613,12 +592,8 @@ END
         my ($self, %args) = @_;
         $self->depends_on('fetch_fltk');
         require Archive::Extract;
-        $args{'from'} ||=
-            _abs(sprintf '%s/fltk-%s-r%d.tar.gz',
-                 $self->notes('snapshot_dir'),
-                 $self->notes('branch'),
-                 $self->notes('svn'));
-        $args{'to'} ||= _abs($self->notes('extract_dir'));
+        $args{'from'} ||= $self->notes('snapshot_path');
+        $args{'to'}   ||= _abs($self->notes('extract_dir'));
         if (-d _abs($args{'to'} . sprintf '/fltk-%s-r%d',
                     $self->notes('branch'),
                     $self->notes('svn')
@@ -647,7 +622,7 @@ END
             return;
         }
         $self->notes('extract'  => $args{'to'});
-        $self->notes('snapshot' => $args{'from'});  # If used from commandline
+        $self->notes('snapshot_path' => $args{'from'});  # If used from commandline
         $self->add_to_cleanup($ae->extract_path);
         print "done.\n";
         return 1;
@@ -669,6 +644,9 @@ END
 
     sub ACTION_write_config_h {
         my ($self) = @_;
+        return 1
+            if -f $self->notes('config_path')
+                && -s $self->notes('config_path');
         $self->depends_on('configure_fltk');
         if (!chdir $self->fltk_dir()) {
             print 'Failed to cd to '
@@ -722,39 +700,20 @@ END
                 print "okay\n";
             }
         }
-        {    # Ganked from Module::Build
+        {
+            require YAML::Tiny;
             printf 'Updating %s config... ', $self->module_name;
-            my $me = $self->module_name();
-            $me =~ s|::|/|g;
-            $me = _abs($self->base_dir() . '/lib/' . $me . '.pm');
-            require IO::File;
-            my $mode_orig = (stat $me)[2] & 07777;
-            chmod($mode_orig | 0222, $me);    # Make it writeable
-            my $fh = IO::File->new($me, 'r+')
-                or die "Can't rewrite $me: $!";
-            seek($fh, 0, 0);
-            while (<$fh>) { last if /^__DATA__$/; }
-
-            if (eof($fh)) {    #warn "Couldn't find __DATA__ token in $me";
-                $fh->print("\n__DATA__\n");
+            my $me        = $self->notes('config_path');
+            my $mode_orig = 0644;
+            if (-d $me) {
+                $mode_orig = (stat $me)[2] & 07777;
+                chmod($mode_orig | 0222, $me);    # Make it writeable
             }
-            seek($fh, tell($fh), 0);
-            my $data = $self->notes();
-            if (eval 'require Data::Dump') {
-                $fh->print(sprintf 'do{ my $x = %s; $x; }' . "\n",
-                           Data::Dump::pp($data));
-            }
-            else {
-                require Data::Dumper;
-                my $Dumper = Data::Dumper->new([$data], ['x']);
-                $Dumper->Purity(1);
-                $fh->print(sprintf 'do{ my %s; $x; }' . "\n",
-                           $Dumper->Dump());
-            }
-            truncate($fh, tell($fh));
-            $fh->close;
+            my $yaml = YAML::Tiny->new;
+            $yaml->[0] = $self->notes();
+            $yaml->write($me);
             chmod($mode_orig, $me)
-                or warn "Couldn't restore permissions on $me: $!";
+                or printf 'Cannot restore permissions on %s: %s', $me, $!;
             print "okay\n";
         }
         if (!chdir $self->base_dir()) {
@@ -767,23 +726,10 @@ END
     sub ACTION_clear_config {
         my ($self) = @_;
         printf 'Cleaning %s config... ', $self->module_name();
-        my $me = $self->module_name();
-        $me =~ s|::|/|g;
-        $me = _abs($self->base_dir() . '/lib/' . $me . '.pm');
-        require IO::File;
+        my $me        = $self->notes('config_path');
         my $mode_orig = (stat $me)[2] & 07777;
         chmod($mode_orig | 0222, $me);    # Make it writeable
-        my $fh = IO::File->new($me, 'r+')
-            or die "Can't rewrite $me: $!";
-        seek($fh, 0, 0);
-        while (<$fh>) { last if /^__DATA__$/; }
-        die "Couldn't find __DATA__ token in $me" if eof($fh);
-        seek($fh, tell($fh), 0);
-        $fh->print("do{ my \$x = { }; \$x; }\n");
-        truncate($fh, tell($fh));
-        $fh->close;
-        chmod($mode_orig, $me)
-            or warn "Couldn't restore permissions on $me: $!";
+        unlink;
         print "okay\n";
     }
 
@@ -804,17 +750,10 @@ END
             printf 'Failed to cd to %s to copy libs', $self->fltk_dir();
             exit 0;
         }
-        $self->copy_if_modified(from => $_,
-                                to_dir =>
-                                    _dir($self->base_dir(),
-                                         qw[blib arch],
-                                         (split '::', $self->module_name),
-                                         'libs',
-                                         'fltk-' . $self->notes('branch')
-                                    )
-            )
-            for grep defined,
-            map { -f $_ ? $_ : () } @{$self->notes('libs')};
+        $self->copy_if_modified(
+                             from   => $_,
+                             to_dir => _dir($self->base_dir(), qw[share libs])
+        ) for @{$self->notes('libs')};
         if (!chdir $self->base_dir()) {
             print 'Failed to cd to base directory';
             exit 0;
