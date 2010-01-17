@@ -5,7 +5,7 @@ package inc::MBX::Alien::FLTK::Platform::Windows;
     use Carp qw[];
     use Config qw[%Config];
     use inc::MBX::Alien::FLTK::Utility
-        qw[_o _a _dir _rel _abs find_h find_lib can_run];
+        qw[_o _a _rel _abs find_h find_lib can_run];
     use inc::MBX::Alien::FLTK;
     use base 'inc::MBX::Alien::FLTK::Base';
     $|++;

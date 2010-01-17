@@ -9,14 +9,14 @@ package inc::MBX::Alien::FLTK::Base;
     use Carp qw[carp];
     use base 'Module::Build';
     use inc::MBX::Alien::FLTK::Utility
-        qw[_o _a _dir _file _rel _abs _exe find_h find_lib can_run];
+        qw[_o _a _path _dir _file _rel _abs _exe find_h find_lib can_run];
     use lib _abs('.');
 
     sub fltk_dir {
         my ($self, $extra) = @_;
         $self->depends_on('extract_fltk');
         return
-            _abs(_dir($self->notes('extract'),
+            _abs(_path($self->notes('extract'),
                       (      'fltk-'
                            . $self->notes('branch') . '-r'
                            . $self->notes('svn')
@@ -120,8 +120,8 @@ package inc::MBX::Alien::FLTK::Base;
         my ($self) = @_;
         $self->depends_on('write_config_h');
         my $headers_location
-            = _dir($self->fltk_dir(), $self->notes('headers_path'));
-        my $headers_share = _dir($self->base_dir(), qw[share include]);
+            = _path($self->fltk_dir(), $self->notes('headers_path'));
+        my $headers_share = _path($self->base_dir(), qw[share include]);
         if (!chdir $headers_location) {
             printf 'Failed to cd to %s to copy headers', $headers_location;
             exit 0;
@@ -131,7 +131,7 @@ package inc::MBX::Alien::FLTK::Base;
                 return if -d;
                 $self->copy_if_modified(
                                       from => $File::Find::name,
-                                      to   => _dir(
+                                      to   => _path(
                                                  $headers_share,
                                                  $self->notes('headers_path'),
                                                  $File::Find::name
@@ -141,12 +141,12 @@ package inc::MBX::Alien::FLTK::Base;
             no_chdir => 1
             },
             '.';
-        if (!chdir _dir($self->fltk_dir())) {
+        if (!chdir _path($self->fltk_dir())) {
             print 'Failed to cd to fltk\'s include directory';
             exit 0;
         }
         $self->copy_if_modified(from => 'config.h',
-                                to   => _dir($headers_share, 'config.h'));
+                                to   => _path($headers_share, 'config.h'));
         print "Copying headers to sharedir...\n" if !$self->quiet;
         if (!chdir $self->base_dir()) {
             printf 'Failed to return to %s', $self->base_dir();
@@ -359,9 +359,9 @@ int main ( ) {
         my $libs = $self->notes('libs_source');
         for my $lib (sort { lc $a cmp lc $b } keys %$libs) {
             print "Building $lib...\n";
-            if (!chdir _dir($build->fltk_dir(), $libs->{$lib}{'directory'})) {
+            if (!chdir _path($build->fltk_dir(), $libs->{$lib}{'directory'})) {
                 printf 'Cannot chdir to %s to build %s',
-                    _dir($build->fltk_dir(), $libs->{$lib}{'directory'}),
+                    _path($build->fltk_dir(), $libs->{$lib}{'directory'}),
                     $lib;
                 exit 0;
             }
@@ -746,14 +746,16 @@ END
             printf 'Failed to return to %s to copy libs', $self->base_dir();
             exit 0;
         }
-        if (!chdir _dir($self->fltk_dir() . '/lib')) {
+        if (!chdir _path($self->fltk_dir() . '/lib')) {
             printf 'Failed to cd to %s to copy libs', $self->fltk_dir();
             exit 0;
         }
-        $self->copy_if_modified(
-                             from   => $_,
-                             to_dir => _dir($self->base_dir(), qw[share libs])
-        ) for @{$self->notes('libs')};
+        for my $lib (@{$self->notes('libs')}) {
+            $self->copy_if_modified(
+                             from   => $lib,
+                             to_dir => _path($self->base_dir(), qw[share libs])
+            )
+        }
         if (!chdir $self->base_dir()) {
             print 'Failed to cd to base directory';
             exit 0;

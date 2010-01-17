@@ -8,7 +8,7 @@ package inc::MBX::Alien::FLTK::Utility;
     use File::Find qw[find];
     use Exporter qw[import];
     our @EXPORT_OK
-        = qw[can_run run _o _a _exe _dll find_h find_lib _dir _abs _rel _file _split];
+        = qw[can_run run _o _a _exe _dll find_h find_lib _path _abs _rel _dir _file _split];
 
     sub can_run {    # Snagged from IPC::CMD and trimmed for my use
         my ($prog) = @_;
@@ -58,10 +58,11 @@ package inc::MBX::Alien::FLTK::Utility;
         $file =~ m[^(.*)(?:\..*)$] or return @_;
         return catpath($vol, $dir, ($1 ? $1 : $file) . '.' . $Config{'so'});
     }
-    sub _dir   { File::Spec->catdir(@_) }             # XXX - should be locale
+    sub _path  { File::Spec->catdir(@_) }
     sub _abs   { File::Spec->rel2abs(@_) }
     sub _rel   { File::Spec->abs2rel(@_) }
     sub _file  { File::Basename::fileparse(shift); }
+    sub _dir   { File::Basename::dirname(shift); }
     sub _split { File::Spec->splitpath(@_) }
 
     sub _find_lib {
@@ -109,7 +110,7 @@ package inc::MBX::Alien::FLTK::Utility;
             {wanted => sub {
                  return if !-d $_;
                  $h = canonpath(rel2abs($_))
-                     if -f _dir($_, $file);
+                     if -f _path($_, $file);
              },
              no_chdir => 1
             },
