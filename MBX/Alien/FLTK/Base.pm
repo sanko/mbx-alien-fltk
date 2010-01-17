@@ -734,7 +734,7 @@ END
         my $me        = $self->notes('config_path');
         my $mode_orig = (stat $me)[2] & 07777;
         chmod($mode_orig | 0222, $me);    # Make it writeable
-        unlink;
+        unlink $me;
         print "okay\n";
     }
 
