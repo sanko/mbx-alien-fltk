@@ -543,11 +543,20 @@ END
                 # XXX - Should I delete the archive and retry?
             }
             binmode($FH);
-            if (Digest::MD5->new->addfile($FH)->hexdigest eq
-                $self->notes('md5_' . $extention))
-            {   print "MD5 checksum is okay\n";
+            unshift @INC, _abs(_path($self->base_dir, 'lib'));
+            if (eval 'require ' . $self->module_name) {
+                my $md5 = $self->module_name->md5;
+                if (Digest::MD5->new->addfile($FH)->hexdigest eq
+                    $md5->{$extention})
+                {   print "MD5 checksum is okay\n";
+                    last;
+                }
+            }
+            else {
+                print "Cannot find checksum. Hope this works out...\n";
                 last;
             }
+            shift @INC;
             close $FH;
             if ($self->notes('bad_fetch_retry')->{'count'}++ > 10) {
                 push @{$self->notes('errors')},
