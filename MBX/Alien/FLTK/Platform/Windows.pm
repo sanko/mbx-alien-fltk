@@ -4,8 +4,8 @@ package inc::MBX::Alien::FLTK::Platform::Windows;
     use warnings;
     use Carp qw[];
     use Config qw[%Config];
-    use inc::MBX::Alien::FLTK::Utility
-        qw[_o _a _rel _abs find_h find_lib can_run];
+    use lib '../../../../../';
+    use inc::MBX::Alien::FLTK::Utility qw[_o _a _rel _abs can_run];
     use inc::MBX::Alien::FLTK;
     use base 'inc::MBX::Alien::FLTK::Base';
     $|++;
@@ -13,53 +13,52 @@ package inc::MBX::Alien::FLTK::Platform::Windows;
     sub configure {
         my ($self) = @_;
         $self->quiet(1);
-        $self->SUPER::configure();    # Get basic config data
-        print "Gathering Windows specific configuration data...\n";
+        $self->SUPER::configure();
         $self->notes(ldflags => $self->notes('ldflags')
                  . ' -mwindows -lmsimg32 -lole32 -luuid -lcomctl32 -lwsock32 '
         );
         $self->notes(
               'cxxflags' => ' -mwindows -DWIN32 ' . $self->notes('cxxflags'));
-        $self->notes('config')->{'HAVE_STRCASECMP'}    = undef;
-        $self->notes('config')->{'HAVE_STRNCASECMP'}   = undef;
-        $self->notes('config')->{'HAVE_STRNCASECMP'}   = undef;
-        $self->notes('config')->{'HAVE_DIRENT_H'}      = undef;
-        $self->notes('config')->{'HAVE_SYS_NDIR_H'}    = undef;
-        $self->notes('config')->{'HAVE_SYS_DIR_H'}     = undef;
-        $self->notes('config')->{'HAVE_NDIR_H'}        = undef;
-        $self->notes('config')->{'HAVE_SCANDIR'}       = undef;
-        $self->notes('config')->{'HAVE_SCANDIR_POSIX'} = undef;
-        {
-            print 'Checking for OpenGL... ';
-            my $GL_LIB = '';
-            $self->notes('config')->{'HAVE_GL'} = 0;
+        $self->notes('define')->{'HAVE_STRCASECMP'}    = undef;
+        $self->notes('define')->{'HAVE_STRNCASECMP'}   = undef;
+        $self->notes('define')->{'HAVE_STRNCASECMP'}   = undef;
+        $self->notes('define')->{'HAVE_DIRENT_H'}      = undef;
+        $self->notes('define')->{'HAVE_SYS_NDIR_H'}    = undef;
+        $self->notes('define')->{'HAVE_SYS_DIR_H'}     = undef;
+        $self->notes('define')->{'HAVE_NDIR_H'}        = undef;
+        $self->notes('define')->{'HAVE_SCANDIR'}       = undef;
+        $self->notes('define')->{'HAVE_SCANDIR_POSIX'} = undef;
+    GL: {
+            last GL if !$self->find_h('gl.h');
+            print 'Testing GL Support... ';
             if (!$self->assert_lib({lib => 'opengl32', header => 'GL/gl.h'}))
-            {   print "no\n";
-                push @{$self->notes('errors')},
-                    {stage   => 'configure',
-                     fatal   => 0,
-                     message => 'OpenGL libs were not found'
-                    };
+            {   print "not okay\n";
+                $self->_error({stage   => 'configure',
+                               fatal   => 0,
+                               message => 'OpenGL libs were not found'
+                              }
+                );
+                last GL;
+            }
+            print "okay\n";
+            $self->notes('define')->{'HAVE_GL'} = 1;
+            $self->notes(GL => '-lopengl32');
+            last GL if !$self->find_h('GL/glu.h');
+            print 'Testing GLU Support... ';
+            if (!$self->assert_lib({lib => 'glu32', header => 'GL/glu.h'})) {
+                print "not okay\n";
+                $self->_error({stage   => 'configure',
+                               fatal   => 0,
+                               message => 'OpenGLU32 libs were not found'
+                              }
+                );
+                last GL;
             }
             else {
-                $self->notes('config')->{'HAVE_GL'} = 1;
+                $self->notes('define')->{'HAVE_GL_GLU_H'} = 1;
                 print "okay\n";
-                $GL_LIB = '-lopengl32';
-
-                #
-                print 'Checking for GL/glu.h... ';
-                $self->notes('config')->{'HAVE_GL_GLU_H'} = 0;
-                if (!$self->assert_lib({lib => 'glu32', header => 'GL/glu.h'})
-                    )
-                {   print "no\n";
-                }
-                else {
-                    $self->notes('config')->{'HAVE_GL_GLU_H'} = 1;
-                    print "okay\n";
-                    $GL_LIB = " -lglu32 $GL_LIB ";
-                }
+                $self->notes(GL => ' -lglu32 ' . $self->notes('GL'));
             }
-            $self->notes(GL => $GL_LIB);
         }
         $self->quiet(0);
         return 1;

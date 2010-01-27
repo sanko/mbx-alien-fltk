@@ -4,8 +4,8 @@ package inc::MBX::Alien::FLTK::Platform::Unix::Solaris;
     use warnings;
     use Carp qw[];
     use Config qw[%Config];
-    use inc::MBX::Alien::FLTK::Utility
-        qw[_o _a _rel _abs find_h find_lib can_run];
+    use lib '../../../../../../';
+    use inc::MBX::Alien::FLTK::Utility qw[_o _a _rel _abs can_run];
     use inc::MBX::Alien::FLTK;
     use base 'inc::MBX::Alien::FLTK::Platform::Unix';
     $|++;
@@ -13,9 +13,7 @@ package inc::MBX::Alien::FLTK::Platform::Unix::Solaris;
     sub configure {
         my ($self) = @_;
         $self->SUPER::configure() || return 0;    # Get basic config data
-        print "Gathering Solaris specific configuration data...\n";
-        print "(Not using scandir emulation function.)\n";
-        $self->notes('config')->{'HAVE_SCANDIR'} = undef;
+        $self->notes('define')->{'HAVE_SCANDIR'} = undef;
         return 1;
     }
     1;

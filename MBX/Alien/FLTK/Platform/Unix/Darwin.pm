@@ -4,22 +4,16 @@ package inc::MBX::Alien::FLTK::Platform::Unix::Darwin;
     use warnings;
     use Carp qw[];
     use Config qw[%Config];
-    use inc::MBX::Alien::FLTK::Utility
-        qw[_o _a _rel _abs find_h find_lib can_run];
+    use lib '../../../../../../';
+    use inc::MBX::Alien::FLTK::Utility qw[_o _a _rel _abs can_run];
     use inc::MBX::Alien::FLTK;
     use base 'inc::MBX::Alien::FLTK::Platform::Unix';
     $|++;
 
     sub configure {
         my ($self) = @_;
-        $self->SUPER::configure(qw[no_gl no_x11])
-            || return 0;    # Get basic config data
-        print "Gathering Mac OSX specific configuration data...\n";
-
-        # Asssumed true since this is *nix
-        print "have pthread... yes (assumed)\n";
-        $self->notes('config')->{'HAVE_PTHREAD'} = 1;
-        $self->notes('config')->{'USE_QUARTZ'} = 1; # Alpha
+        $self->SUPER::configure(qw[no_gl no_x11]) || return 0;
+        $self->notes('define')->{'USE_QUARTZ'} = 1;    # Alpha
         $self->notes(
                ldflags => ' -framework Carbon -framework ApplicationServices '
                    . $self->notes('ldflags'));

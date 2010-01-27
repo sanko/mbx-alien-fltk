@@ -4,37 +4,17 @@ package inc::MBX::Alien::FLTK::Platform::Windows::CygWin;
     use warnings;
     use Carp qw[];
     use Config qw[%Config];
-    use inc::MBX::Alien::FLTK::Utility
-        qw[_o _a _rel _abs find_h find_lib can_run];
+    use lib '../../../../../../';
+    use inc::MBX::Alien::FLTK::Utility qw[_o _a _rel _abs can_run];
     use inc::MBX::Alien::FLTK;
     use base 'inc::MBX::Alien::FLTK::Platform::Windows';
     $|++;
 
     sub configure {
         my ($self) = @_;
-        $self->SUPER::configure() || return 0;    # Get basic config data
-        print "Gathering CygWin specific configuration data...\n";
-        {    # Taken from inc::MBX::Alien::FLTK::Platform::Unix
-            print
-                'Checking whether we have the POSIX compatible scandir() prototype... ';
-            my $obj = $self->compile({code => <<'' });
-#include <dirent.h>
-int func (const char *d, dirent ***list, void *sort) {
-    int n = scandir(d, list, 0, (int(*)(const dirent **, const dirent **))sort);
-}
-int main ( ) {
-    return 0;
-}
+        $self->SUPER::configure() || return 0;
 
-            if ($obj ? 1 : 0) {
-                print "yes\n";
-                $self->notes('config')->{'HAVE_SCANDIR_POSIX'} = 1;
-            }
-            else {
-                print "no\n";
-                $self->notes('config')->{'HAVE_SCANDIR_POSIX'} = undef;
-            }
-        }
+        # XXX - X11 support
         return 1;
     }
     1;
