@@ -406,6 +406,6 @@ Creative Commons Attribution-Share Alike 3.0 License. See
 http://creativecommons.org/licenses/by-sa/3.0/us/legalcode.  For
 clarification, see http://creativecommons.org/licenses/by-sa/3.0/us/.
 
-=for git $Id: Unix.pm 84504b8 2009-10-27 21:17:03Z sanko@cpan.org $
+=for git $Id$
 
 =cut

@@ -264,6 +264,6 @@ Creative Commons Attribution-Share Alike 3.0 License. See
 http://creativecommons.org/licenses/by-sa/3.0/us/legalcode.  For
 clarification, see http://creativecommons.org/licenses/by-sa/3.0/us/.
 
-=for git $Id: Developer.pm 999e422 2009-11-02 18:51:07Z sanko@cpan.org $
+=for git $Id$
 
 =cut

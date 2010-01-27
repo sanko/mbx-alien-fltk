@@ -89,6 +89,6 @@ Creative Commons Attribution-Share Alike 3.0 License. See
 http://creativecommons.org/licenses/by-sa/3.0/us/legalcode.  For
 clarification, see http://creativecommons.org/licenses/by-sa/3.0/us/.
 
-=for git $Id: Windows.pm 347de4a 2009-10-09 00:59:57Z sanko@cpan.org $
+=for git $Id$
 
 =cut

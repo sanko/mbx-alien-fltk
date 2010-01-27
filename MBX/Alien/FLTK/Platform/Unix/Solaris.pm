@@ -43,6 +43,6 @@ Creative Commons Attribution-Share Alike 3.0 License. See
 http://creativecommons.org/licenses/by-sa/3.0/us/legalcode.  For
 clarification, see http://creativecommons.org/licenses/by-sa/3.0/us/.
 
-=for git $Id: Solaris.pm a97e5a4 2009-10-25 14:34:56Z sanko@cpan.org $
+=for git $Id$
 
 =cut

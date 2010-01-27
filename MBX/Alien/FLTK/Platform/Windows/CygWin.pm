@@ -62,6 +62,6 @@ Creative Commons Attribution-Share Alike 3.0 License. See
 http://creativecommons.org/licenses/by-sa/3.0/us/legalcode.  For
 clarification, see http://creativecommons.org/licenses/by-sa/3.0/us/.
 
-=for git $Id: CygWin.pm fb39021 2009-11-02 21:07:09Z sanko@cpan.org $
+=for git $Id$
 
 =cut

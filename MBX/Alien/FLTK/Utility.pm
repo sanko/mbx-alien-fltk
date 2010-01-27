@@ -128,6 +128,6 @@ Creative Commons Attribution-Share Alike 3.0 License. See
 http://creativecommons.org/licenses/by-sa/3.0/us/legalcode.  For
 clarification, see http://creativecommons.org/licenses/by-sa/3.0/us/.
 
-=for git $Id: Utility.pm 2fbc10d 2009-09-18 03:50:45Z sanko@cpan.org $
+=for git $Id$
 
 =cut
