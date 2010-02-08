@@ -179,6 +179,10 @@ package. If I'm just missing something... patches welcome.
                 else { print "no\n" }
             }
             $self->notes(GL => $GL_LIB);
+            for my $lib (keys %{$self->notes('libs_source')}) {
+                $self->notes('libs_source')->{$lib}{'disabled'}++
+                    if $lib =~ m[gl$]i;
+            }
         }
         $self->quiet(0);
         return 1;

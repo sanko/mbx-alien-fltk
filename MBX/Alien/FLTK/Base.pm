@@ -165,7 +165,6 @@ package inc::MBX::Alien::FLTK::Base;
         $self->notes('cache'         => {});
         $self->notes('_a'            => $Config{'_a'});
         $self->notes('cxxflags'      => ' ');
-        $self->notes('GL'            => ' ');
         $self->notes('include_dirs'  => {});
         $self->notes('library_paths' => {});
 
@@ -571,6 +570,7 @@ int main ( ) {
         $self->notes('libs' => []);
         my $libs = $self->notes('libs_source');
         for my $lib (sort { lc $a cmp lc $b } keys %$libs) {
+            next if $libs->{$lib}{'disabled'};
             print "Building $lib...\n";
             if (!chdir _path($build->fltk_dir(), $libs->{$lib}{'directory'}))
             {   printf 'Cannot chdir to %s to build %s',

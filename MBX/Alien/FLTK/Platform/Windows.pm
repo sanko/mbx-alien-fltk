@@ -29,7 +29,7 @@ package inc::MBX::Alien::FLTK::Platform::Windows;
         $self->notes('define')->{'HAVE_SCANDIR'}       = undef;
         $self->notes('define')->{'HAVE_SCANDIR_POSIX'} = undef;
     GL: {
-            last GL if !$self->find_h('gl.h');
+            last GL if !$self->find_h('GL/gl.h');
             print 'Testing GL Support... ';
             if (!$self->assert_lib({lib => 'opengl32', header => 'GL/gl.h'}))
             {   print "not okay\n";
@@ -39,6 +39,10 @@ package inc::MBX::Alien::FLTK::Platform::Windows;
                               }
                 );
                 last GL;
+                for my $lib (keys %{$self->notes('libs_source')}) {
+                    $self->notes('libs_source')->{$lib}{'disabled'}++
+                        if $lib =~ m[gl$]i;
+                }
             }
             print "okay\n";
             $self->notes('define')->{'HAVE_GL'} = 1;
@@ -53,6 +57,10 @@ package inc::MBX::Alien::FLTK::Platform::Windows;
                               }
                 );
                 last GL;
+                for my $lib (keys %{$self->notes('libs_source')}) {
+                    $self->notes('libs_source')->{$lib}{'disabled'}++
+                        if $lib =~ m[gl$]i;
+                }
             }
             else {
                 $self->notes('define')->{'HAVE_GL_GLU_H'} = 1;
