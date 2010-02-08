@@ -4,7 +4,6 @@ package inc::MBX::Alien::FLTK::Developer;
     use warnings;
     $|++;
     use Config qw[%Config];
-    use ExtUtils::ParseXS qw[];
     use ExtUtils::CBuilder qw[];
     use lib '../../../../';
     use inc::MBX::Alien::FLTK::Utility qw[_rel _abs _split];
