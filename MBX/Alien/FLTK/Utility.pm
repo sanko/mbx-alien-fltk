@@ -5,10 +5,10 @@ package inc::MBX::Alien::FLTK::Utility;
     use Config qw[%Config];
     use File::Spec::Functions qw[splitpath catpath catdir rel2abs];
     use File::Basename qw[];
-    use File::Find qw[find];
+    use Cwd qw[];
     use Exporter qw[import];
     our @EXPORT_OK
-        = qw[can_run run _o _a _exe _dll _path _abs _rel _dir _file _split];
+        = qw[can_run run _o _a _exe _dll _path _realpath _abs _rel _dir _file _split _cwd];
 
     sub can_run {    # Snagged from IPC::CMD and trimmed for my use
         my ($prog) = @_;
@@ -58,12 +58,17 @@ package inc::MBX::Alien::FLTK::Utility;
         $file =~ m[^(.*)(?:\..*)$] or return @_;
         return catpath($vol, $dir, ($1 ? $1 : $file) . '.' . $Config{'so'});
     }
-    sub _path  { File::Spec->catdir(@_) }
+    sub _path { File::Spec->catdir(@_) }
+
+    sub _realpath {
+        eval { Cwd::realpath(File::Spec->canonpath(shift)) };
+    }
     sub _abs   { File::Spec->rel2abs(@_) }
     sub _rel   { File::Spec->abs2rel(@_) }
-    sub _file  { File::Basename::fileparse(shift); }
-    sub _dir   { File::Basename::dirname(shift); }
+    sub _file  { File::Basename::basename(shift) }
+    sub _dir   { File::Basename::dirname(shift || '') }
     sub _split { File::Spec->splitpath(@_) }
+    sub _cwd   { Cwd::cwd(); }
     1;
 }
 
