@@ -39,26 +39,26 @@ package inc::MBX::Alien::FLTK::Platform::Unix;
                 last if grep {m[^no_x11$]} @args;
                 $self->notes('define')->{'USE_X11'} = 1;
                 print 'Checking for X11 libs... ';
-                $self->notes('can_has_x11', 0);
-                for my $incdir ($self->_x11_()) {
-                    my $libdir = $incdir;
-                    $libdir =~ s|include|lib|;
-                    if ($self->assert_lib({lib     => 'X11',
-                                           libpath => $libdir,
-                                           header  => 'X11/Xlib.h',
-                                           incpath => $incdir
+                my $can_haz_x11 = 0;
+                for my $format ($self->_x11_()) {
+                    my $incdir = sprintf $format, 'include';
+                    my $libdir = sprintf $format, 'lib';
+                    if ($self->assert_lib({libs         => ['X11'],
+                                           lib_dirs     => [$libdir],
+                                           headers      => ['X11/Xlib.h'],
+                                           include_dirs => [$incdir]
                                           }
                         )
                         )
                     {   $self->notes('include_dirs')->{_abs($incdir)}++;
                         $self->notes('ldflags' => " -L$libdir -lX11 "
                                      . $self->notes('ldflags'));
-                        $self->notes('can_has_x11', 1);
+                        $can_haz_x11 = 1;
                         print "okay\n";
                         last;
                     }
                 }
-                if (!$self->notes('can_has_x11')) {
+                if (!$can_haz_x11) {
                     $self->_error({stage   => 'configure',
                                    fatal   => 1,
                                    exit    => 1,
@@ -70,18 +70,17 @@ If I'm just missing something... patches welcome.
                 }
             }
             {
-
-                #
                 print 'Checking for Xcursor libs... ';
                 $self->notes('define')->{'USE_XCURSOR'} = 0;
-                for my $incdir ($self->_x11_()) {
-                    my $libdir = $incdir;
-                    $libdir =~ s|include|lib|;
-                    if ($self->assert_lib({lib     => 'X11/Xcursor',
-                                           libpath => $libdir,
-                                           header  => 'Xcursor/Xcursor.h',
-                                           incpath => $incdir
-                                          }
+                for my $format ($self->_x11_()) {
+                    my $incdir = sprintf $format, 'include';
+                    my $libdir = sprintf $format, 'lib';
+                    if ($self->assert_lib(
+                                     {libs     => ['Xcursor'],
+                                      lib_dirs => [$libdir],
+                                      headers  => ['X11/Xcursor/Xcursor.h'],
+                                      include_dirs => [$incdir]
+                                     }
                         )
                         )
                     {   $self->notes('include_dirs')->{_abs($incdir)}++;
@@ -108,16 +107,16 @@ x-dev, and libxcursor-dev. If I'm just missing something... patches welcome.
                 #
                 print 'Checking for Xi libs... ';
                 my $Xi_okay = 0;
-            XI: for my $incdir ($self->_x11_()) {
-                    my $libdir = $incdir;
-                    $libdir =~ s|include|lib|;
-                    if ($self->assert_lib({lib     => [qw[Xi Xext]],
-                                           libpath => $libdir,
-                                           header  => [
+            XI: for my $format ($self->_x11_()) {
+                    my $incdir = sprintf $format, 'include';
+                    my $libdir = sprintf $format, 'lib';
+                    if ($self->assert_lib({libs     => [qw[Xi Xext]],
+                                           lib_dirs => [$libdir],
+                                           headers  => [
                                                     'X11/extensions/XInput.h',
                                                     'X11/extensions/XI.h'
                                            ],
-                                           incpath => $incdir
+                                           include_dirs => [$incdir]
                                           }
                         )
                         )
@@ -146,8 +145,8 @@ package. If I'm just missing something... patches welcome.
             my $GL_LIB = '';
             $self->notes('define')->{'HAVE_GL'} = 0;
         GL_LIB: for my $_GL_lib (qw[GL MesaGL]) {
-                if ($self->assert_lib({lib    => $_GL_lib,
-                                       header => 'GL/gl.h'
+                if ($self->assert_lib({libs    => [$_GL_lib],
+                                       headers => ['GL/gl.h']
                                       }
                     )
                     )
@@ -168,8 +167,8 @@ package. If I'm just missing something... patches welcome.
             }
             if ($GL_LIB && $self->notes('define')->{'HAVE_GL_GLU_H'}) {
                 print 'Checking for GL/glu.h... ';
-                if ($self->assert_lib({lib    => 'GLU',
-                                       header => 'GL/glu.h'
+                if ($self->assert_lib({libs    => ['GLU'],
+                                       headers => ['GL/glu.h']
                                       }
                     )
                     )
