@@ -1028,7 +1028,7 @@ END
             printf STDOUT ('*** ' x 15) . "\n"
                 . 'error was encountered during the build process . '
                 . "Please correct it and run Build.PL again.\nExiting...",
-                exit 0;
+                exit defined $error->{'exit'} ? $error->{'exit'} : 0;
         }
     }
 
