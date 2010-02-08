@@ -1246,15 +1246,19 @@ END
         print "okay\n";
     }
 
-    sub ACTION_clear_config {
+    sub ACTION_reset_config {
         my ($self) = @_;
-        my $me = $self->notes('config_yml');
-        return 1 if !-f $me;
+        return if !$self->notes('timestamp_configure');
         printf 'Cleaning %s config... ', $self->module_name();
-        my $mode_orig = (stat $me)[2] & 07777;
-        chmod($mode_orig | 0222, $me);    # Make it writeable
-        unlink $me;
-        print "okay\n";
+        my $yml = $self->notes('config_yml');
+        if (-f $yml) {
+            my $mode_orig = (stat $yml)[2] & 07777;
+            chmod($mode_orig | 0222, $yml);    # Make it writeable
+            unlink $yml;
+        }
+        $self->notes(timestamp_configure => 0);
+        $self->notes(timestamp_extracted => 0);
+        print "done\n";
     }
 
     sub ACTION_build_fltk {
@@ -1312,7 +1316,7 @@ END
 
     sub ACTION_clean {
         my $self = shift;
-        $self->dispatch('clear_config');
+        $self->dispatch('reset_config');
         $self->SUPER::ACTION_clean(@_);
         $self->notes(errors => []);    # Reset fatal and non-fatal errors
     }
