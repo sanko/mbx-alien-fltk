@@ -1107,46 +1107,48 @@ END
         sub find_lib {
             my ($self, $find, $dir) = @_;
             printf 'Looking for lib%s... ', $find;
-            no warnings 'File::Find';
+            require File::Find::Rule;
             $find =~ s[([\+\*\.])][\\$1]g;
             $dir ||= $Config{'libpth'};
             $dir = _path($dir);
-            my $lib;
-            find(
-                sub {
-                    $lib = _path(_abs($File::Find::dir))
-                        if $_ =~ qr[lib$find$Config{'_a'}];
-                },
-                split ' ',
-                $dir
-            ) if $dir;
-            printf "%s\n", defined $lib ? 'found ' . $lib : 'missing';
-            return $lib;
+            my @files
+                = File::Find::Rule->file()
+                ->name('lib' . $find . $Config{'_a'})->maxdepth(1)
+                ->in(split ' ', $dir);
+            printf "%s\n", @files ? 'found ' . (_dir($files[0])) : 'missing';
+            return _path((_dir($files[0])));
         }
 
         sub find_h {
             my ($self, $file, $dir) = @_;
             printf 'Looking for %s... ', $file;
-            no warnings 'File::Find';
+            $dir = join ' ', ($dir || ''), $Config{'incpath'},
+                $Config{'usrinc'};
+            $dir =~ s|\s+| |g;
+            for my $test (split m[\s+]m, $dir) {
+                if (-e _path($test . '/' . $file)) {
+                    printf "found in %s\n", _path($test);
+                    $self->notes('include_dirs')->{_path($test)}++;
+                    return _path($test);
+                }
+            }
+            print "missing\n";
+            return ();
+        }
+
+        sub _find_h {
+            my ($self, $file, $dir) = @_;
+            printf 'Looking for %s... ', $file;
+            require File::Find::Rule;
             $dir ||= $Config{'incpath'} . ' ' . $Config{'usrinc'};
             $dir  = _path($dir);
             $file = _path($file);
-            my $h;
-            find(
-                {wanted => sub {
-                     return if !-d $_;
-                     $h = _path(_abs($_))
-                         if -f _path($_, $file);
-                 },
-                 no_chdir => 1
-                },
-                split ' ',
-                $dir
-            ) if $dir;
-            if (defined $h) {
-                printf "found %s\n", $h;
-                $self->notes('include_dirs')->{$h}++;
-                return $h;
+            my @files = File::Find::Rule->file()->name($file)->maxdepth(1)
+                ->in(split ' ', $dir);
+            if (@files) {
+                printf "found in %s\n", _dir($files[0]);
+                $self->notes('include_dirs')->{_dir($files[0])}++;
+                return _dir($files[0]);
             }
             print "missing\n";
             return ();
