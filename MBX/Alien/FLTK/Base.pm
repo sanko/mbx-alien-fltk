@@ -1172,11 +1172,12 @@ END
     sub ACTION_configure {
         my ($self) = @_;
         $self->depends_on('extract_fltk');
+        if (!$self->notes('timestamp_configure')
 
-        #if (   !$self->notes('define')
-        #    || !-f $self->fltk_dir('config.h'))
-        {
-            print "Gathering configuration data...\n";
+            #   || !$self->notes('define')
+            #|| !-f $self->fltk_dir('config.h')
+            )
+        {   print "Gathering configuration data...\n";
             $self->configure();
             $self->notes(timestamp_configure => time);
         }
@@ -1203,12 +1204,6 @@ END
             )
         {   {
                 print 'Creating config.h... ';
-                if (!chdir $self->fltk_dir()) {
-                    print 'Failed to cd to '
-                        . $self->fltk_dir()
-                        . ' to write config.h';
-                    exit 0;
-                }
                 my $config = '';
                 my %config = %{$self->notes('define')};
                 for my $key (
@@ -1234,10 +1229,6 @@ END
                 syswrite($CONFIG_H, $config) == length($config)
                     || Carp::confess 'Failed to write config.h';
                 close $CONFIG_H;
-                if (!chdir $self->base_dir()) {
-                    print 'Failed to cd to base directory';
-                    exit 0;
-                }
                 $self->notes(timestamp_config_h => time);
                 print "okay\n";
             }
@@ -1254,11 +1245,11 @@ END
         $self->depends_on('configure');
         require Module::Build::YAML;
         printf 'Updating %s config... ', $self->module_name;
-        my $me        = _abs($self->notes('config_yml'));
+        my $me        = ($self->notes('config_yml'));
         my $mode_orig = 0644;
         if (!-d _dir($me)) {
             require File::Path;
-            File::Path::make_path(_dir($me), {verbose => 1});
+            $self->add_to_cleanup(File::Path::make_path(_dir($me)));
         }
         elsif (-d $me) {
             $mode_orig = (stat $me)[2] & 07777;
@@ -1309,29 +1300,16 @@ END
         my ($self) = @_;
         $self->depends_on('write_config_h');
         $self->depends_on('write_config_yml');
-        if (!chdir $self->fltk_dir()) {
-            printf 'Failed to cd to %s to locate libs libs',
-                $self->fltk_dir();
-            exit 0;
-        }
         my @lib = $self->build_fltk($self);
         if (!chdir $self->base_dir()) {
             printf 'Failed to return to %s to copy libs', $self->base_dir();
             exit 0;
         }
-        if (!chdir _path($self->fltk_dir() . '/lib')) {
-            printf 'Failed to cd to %s to copy libs', $self->fltk_dir();
-            exit 0;
-        }
         for my $lib (@{$self->notes('libs')}) {
             $self->copy_if_modified(
-                            from   => $lib,
-                            to_dir => _path($self->base_dir(), qw[share libs])
+                   from => $lib,
+                   to => _path($self->base_dir(), qw[share libs], _file($lib))
             );
-        }
-        if (!chdir $self->base_dir()) {
-            print 'Failed to cd to base directory';
-            exit 0;
         }
         return 1;
     }
