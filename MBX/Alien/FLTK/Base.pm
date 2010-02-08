@@ -916,15 +916,16 @@ int main ( ) {
     # Module::Build actions
     sub ACTION_fetch_fltk {
         my ($self, %args) = @_;
-        $args{'to'} = _abs(
+        $args{'to'} = (
             defined $args{'to'} ? $args{'to'} : $self->notes('snapshot_dir'));
         $args{'ext'}    ||= [qw[gz bz2]];
         $args{'scheme'} ||= [qw[http ftp]];
         {
             my ($file) = grep {-f} map {
-                _abs(sprintf '%s/fltk-%s-r%d.tar.%s',
-                     $args{'to'}, $self->notes('branch'),
-                     $self->notes('svn'), $_)
+                (sprintf '%s/fltk-%s-r%d.tar.%s',
+                 $args{'to'}, $self->notes('branch'),
+                 $self->notes('svn'), $_
+                    )
             } @{$args{'ext'}};
             if (defined $file) {
                 $self->notes('snapshot_path' => $file);
@@ -965,9 +966,12 @@ int main ( ) {
                     if ($archive and -f $archive) {
                         $self->notes('snapshot_mirror_uri'      => $ff->uri);
                         $self->notes('snapshot_mirror_location' => $mirror);
-                        $archive = _abs(sprintf '%s/fltk-%s-r%d.tar.%s',
-                                        $args{'to'}, $self->notes('branch'),
-                                        $self->notes('svn'), $ext);
+                        $archive = (sprintf '%s/fltk-%s-r%d.tar.%s',
+                                    $args{'to'},
+                                    $self->notes('branch'),
+                                    $self->notes('svn'),
+                                    $ext
+                        );
                         $extention = $ext;
                         $dir       = $args{'to'};
                         last MIRROR;
@@ -991,11 +995,10 @@ int main ( ) {
             }
             my $urls = join "\n", @urls;
             $self->_error(
-                    {stage => 'fltk source download',
-                     fatal => 1,
-                     message =>
-                         sprintf
-                         <<'END', _abs($self->notes('snapshot_dir')), $urls});
+                {stage => 'fltk source download',
+                 fatal => 1,
+                 message =>
+                     sprintf <<'END', ($self->notes('snapshot_dir')), $urls});
 Okay, we just failed at life.
 
 If you want, you may manually download a snapshot and place it in
@@ -1027,6 +1030,7 @@ END
 
     sub ACTION_verify_snapshot {
         my ($self) = @_;
+        return 1 if $self->notes('snapshot_okay');
         require Digest::MD5;
         print 'Checking MD5 hash of archive... ';
         my $archive = $self->notes('snapshot_path');
@@ -1041,16 +1045,18 @@ END
             );    # XXX - Should I delete the archive and retry?
         }
         binmode($FH);
-        unshift @INC, _abs(_path($self->base_dir, 'lib'));
+        unshift @INC, (_path($self->base_dir, 'lib'));
         if (eval 'require ' . $self->module_name) {
             my $md5 = $self->module_name->_md5;
             if (Digest::MD5->new->addfile($FH)->hexdigest eq $md5->{$ext}) {
                 print "MD5 checksum is okay\n";
+                $self->notes('snapshot_okay' => 'Valid @ ' . time);
                 return 1;
             }
         }
         else {
             print "Cannot find checksum. Hope this works out...\n";
+            $self->notes('snapshot_okay' => 'Pray that it is... @' . time);
             return 1;
         }
         shift @INC;
@@ -1078,38 +1084,58 @@ END
         my ($self, %args) = @_;
         $self->depends_on('fetch_fltk');
         $args{'from'} ||= $self->notes('snapshot_path');
-        $args{'to'}   ||= _abs($self->notes('extract_dir'));
-        unshift @INC, _abs(_path($self->base_dir, 'lib'));
-        my $_extracted;
-        if (eval 'require ' . $self->module_name) {
-            my $unique_file = $self->module_name->_unique_file;
-            $_extracted = -f _abs($args{'to'} . sprintf '/fltk-%s-r%d/%s',
-                                  $self->notes('branch'),
-                                  $self->notes('svn'),
-                                  $unique_file
-            ) ? 1 : 0;
+        $args{'to'}   ||= _rel(($self->notes('extract_dir')));
+        unshift @INC, (_path($self->base_dir, 'lib'));
+        eval 'require ' . $self->module_name;
+        my $unique_file = $self->module_name->_unique_file;
+        if (-f ($args{'to'} . sprintf '/fltk-%s-r%d/%s',
+                $self->notes('branch'),
+                $self->notes('svn'),
+                $unique_file
+            )
+            && !$self->notes('timestamp_extracted')
+            )
+        {   warn sprintf
+                "Odd... Found extracted snapshot at %s... (unique file %s located)\n",
+                _rel($args{'to'} . sprintf '/fltk-%s-r%d',
+                     $self->notes('branch'),
+                     $self->notes('svn')),
+                _rel($args{'to'} . sprintf '/fltk-%s-r%d/%s',
+                     $self->notes('branch'),
+                     $self->notes('svn'), $unique_file);
+            $self->notes(timestamp_extracted => time);
+            $self->notes('extract'           => $args{'to'});
+            $self->notes('snapshot_path'     => $args{'from'});
+            return 1;
         }
-        elsif (-d _abs($args{'to'} . sprintf '/fltk-%s-r%d',
-                       $self->notes('branch'),
-                       $self->notes('svn')
+        elsif (-d ($args{'to'} . sprintf '/fltk-%s-r%d',
+                   $self->notes('branch'),
+                   $self->notes('svn')
                )
+               && !$self->notes('timestamp_extracted')
             )
         {   $self->notes('extract' => $args{'to'});
-            $_extracted = 1;
-            return 1;    # XXX - what should we do?!?
+            warn sprintf
+                "Strage... found partially extracted snapshot at %s...\n",
+                _rel($args{'to'} . sprintf '/fltk-%s-r%d',
+                     $self->notes('branch'),
+                     $self->notes('svn'));
             require File::Path;
-            printf "Removing existing directory...\n", $args{'to'};
-            File::Path::remove_tree(_abs($args{'to'} . sprintf '/fltk-%s-r%d',
-                                         $self->notes('branch'),
-                                         $self->notes('svn')
+            print 'Removing existing directory... ', $args{'to'};
+            File::Path::remove_tree(($args{'to'} . sprintf '/fltk-%s-r%d',
+                                     $self->notes('branch'),
+                                     $self->notes('svn')
                                     )
             );
+            $self->notes('timestamp_extracted' => undef);
+            print "done\n";
         }
-        if (!$_extracted) {
+        if (!$self->notes('timestamp_extracted')) {
+            printf 'Extracting snapshot from %s to %s... ',
+                _rel($args{'from'}),
+                _rel($args{'to'});
             require Archive::Extract;
             my $ae = Archive::Extract->new(archive => $args{'from'});
-            printf 'Extracting %s to %s... ', _rel($args{'from'}),
-                _rel($args{'to'});
             if (!$ae->extract(to => $args{'to'})) {
                 $self->_error({stage   => 'fltk source extraction',
                                fatal   => 1,
@@ -1118,10 +1144,11 @@ END
                 );
             }
             $self->add_to_cleanup($ae->extract_path);
+            $self->notes(timestamp_extracted => time);
+            $self->notes('extract'           => $args{'to'});
+            $self->notes('snapshot_path'     => $args{'from'});
             print "done.\n";
         }
-        $self->notes('extract'       => $args{'to'});
-        $self->notes('snapshot_path' => $args{'from'});
         return 1;
     }
 
