@@ -84,9 +84,8 @@ package inc::MBX::Alien::FLTK::Base;
 
     sub link_exe {
         my ($self, $args) = @_;
-
-        #local $^W = 0;
-        #local $self->cbuilder->{'quiet'} = 1;
+        local $^W = 0;
+        local $self->cbuilder->{'quiet'} = 1;
         my $exe = eval {
             $self->cbuilder->link_executable(
                                      objects            => $args->{'objects'},
@@ -844,6 +843,7 @@ int main ( ) {
 
     sub build_fltk {
         my ($self, $build) = @_;
+        $self->quiet(1);
         $self->notes('libs' => []);
         if (!chdir $self->base_dir()) {
             print 'Failed to cd to base directory';
