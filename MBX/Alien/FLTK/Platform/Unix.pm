@@ -21,6 +21,39 @@ package inc::MBX::Alien::FLTK::Platform::Unix;
                     \$x
                 }
         );
+
+        # Asssumed true since this is *nix
+        $self->notes('define')->{'USE_X11'} = !grep {m[^no_x11$]} @args;
+        print "have pthread... yes (assumed)\n";
+        $self->notes('define')->{'HAVE_PTHREAD'} = 1;
+        $self->notes('ldflags' => $self->notes('ldflags') . ' -lpthread ');
+        $self->notes('define')->{'HAVE_SYS_NDIR_H'}
+            = ($self->assert_lib({headers => ['sys/ndir.h']}) ? 1 : undef);
+        $self->notes('define')->{'HAVE_SYS_DIR_H'}
+            = ($self->assert_lib({headers => ['sys/dir.h']}) ? 1 : undef);
+        $self->notes('define')->{'HAVE_NDIR_H'}
+            = ($self->assert_lib({headers => ['ndir.h']}) ? 1 : undef);
+        {
+            print "Checking string functions...\n";
+            if (($self->notes('os') =~ m[^hpux$]i)
+                && $self->notes('os_ver') == 1020)
+            {   print
+                    "\nNot using built-in snprintf function because you are running HP-UX 10.20\n";
+                $self->notes('define')->{'HAVE_SNPRINTF'} = undef;
+                print
+                    "\nNot using built-in vnprintf function because you are running HP-UX 10.20\n";
+                $self->notes('define')->{'HAVE_VNPRINTF'} = undef;
+            }
+            elsif (($self->notes('os') =~ m[^dec_osf$]i)
+                   && $self->notes('os_ver') == 40)
+            {   print
+                    "\nNot using built-in snprintf function because you are running Tru64 4.0.\n";
+                $self->notes('define')->{'HAVE_SNPRINTF'} = undef;
+                print
+                    "\nNot using built-in vnprintf function because you are running Tru64 4.0.\n";
+                $self->notes('define')->{'HAVE_VNPRINTF'} = undef;
+            }
+        }
         {
 
             # Use the X overlay extension for MenuWindow and Tooltips. Pretty
@@ -191,26 +224,26 @@ package. If I'm just missing something... patches welcome.
     sub _x11_ {    # Common directories for X headers. Check X11 before X11R\d
         return     # because it is often a symlink to the current release.
             qw[
-            /usr/X11/include
-            /usr/X11R7/include          /usr/X11R6/include
-            /usr/X11R5/include          /usr/X11R4/include
-            /usr/include
-            /usr/include/X11R7          /usr/include/X11R6
-            /usr/include/X11R5          /usr/include/X11R4
-            /usr/local/X11/include
-            /usr/local/X11R7/include    /usr/local/X11R6/include
-            /usr/local/X11R5/include    /usr/local/X11R4/include
-            /usr/local/include
-            /usr/local/include/X11R7    /usr/local/include/X11R6
-            /usr/local/include/X11R5    /usr/local/include/X11R4
-            /usr/X386/include           /usr/x386/include
-            /usr/XFree86/include
-            /usr/include                /usr/local/include
-            /usr/unsupported/include
-            /usr/athena/include
-            /usr/local/x11r5/include
-            /usr/lpp/Xamples/include
-            /usr/openwin/include        /usr/openwin/share/include   ];
+            /usr/%s                     /usr/local/%s
+            /usr/X11/%s
+            /usr/X11R7/%s          /usr/X11R6/%s
+            /usr/X11R5/%s          /usr/X11R4/%s
+            /usr/%s
+            /usr/%s/X11R7          /usr/%s/X11R6
+            /usr/%s/X11R5          /usr/%s/X11R4
+            /usr/local/X11/%s
+            /usr/local/X11R7/%s     /usr/local/X11R6/%s
+            /usr/local/X11R5/%s     /usr/local/X11R4/%s
+            /usr/local/%s
+            /usr/local/%s/X11R7     /usr/local/%s/X11R6
+            /usr/local/%s/X11R5     /usr/local/%s/X11R4
+            /usr/X386/%s                /usr/x386/%s
+            /usr/XFree86/%s
+            /usr/unsupported/%s
+            /usr/athena/%s
+            /usr/local/x11r5/%s
+            /usr/lpp/Xamples/%s
+            /usr/openwin/%s        /usr/openwin/share/%s   ];
     }
     1;
 }

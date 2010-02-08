@@ -10,21 +10,21 @@ package inc::MBX::Alien::FLTK::Base;
     use base 'Module::Build';
     use lib '../../../../';
     use inc::MBX::Alien::FLTK::Utility
-        qw[_o _a _path _dir _file _rel _abs _exe can_run];
-    use lib _abs('.');
+        qw[_o _a _path _realpath _dir _file _rel _abs _exe _cwd can_run];
+    use lib '.';
 
     sub fltk_dir {
         my ($self, $extra) = @_;
         $self->depends_on('extract_fltk');
-        return
-            _abs(_path($self->notes('extract'),
-                       (      'fltk-'
-                            . $self->notes('branch') . '-r'
-                            . $self->notes('svn')
-                       ),
-                       $extra || ()
-                 )
-            );
+        return (_path($self->base_dir,
+                      $self->notes('extract'),
+                      (      'fltk-'
+                           . $self->notes('branch') . '-r'
+                           . $self->notes('svn')
+                      ),
+                      $extra || ()
+                )
+        );
     }
 
     sub archive {
@@ -79,14 +79,14 @@ package inc::MBX::Alien::FLTK::Base;
         };
 
         #unlink $args->{'source'} if $code;
-        return if !$obj;
-        return $obj;
+        return $obj ? $obj : ();
     }
 
     sub link_exe {
         my ($self, $args) = @_;
-        local $^W = 0;
-        local $self->cbuilder->{'quiet'} = 1;
+
+        #local $^W = 0;
+        #local $self->cbuilder->{'quiet'} = 1;
         my $exe = eval {
             $self->cbuilder->link_executable(
                                      objects            => $args->{'objects'},
@@ -101,8 +101,7 @@ package inc::MBX::Alien::FLTK::Base;
                                      )
             );
         };
-        return if !$exe;
-        return $exe;
+        return $exe ? $exe : ();
     }
 
     sub build_exe {
@@ -161,10 +160,362 @@ package inc::MBX::Alien::FLTK::Base;
     # Configure
     sub configure {
         my ($self, $args) = @_;
+        $self->notes('_a'       => $Config{'_a'});
+        $self->notes('ldflags'  => ' ');
+        $self->notes('cxxflags' => ' ');
+        $self->notes('GL'       => ' ');
+        $self->notes(
+            'image_flags' => (
+                $self->notes('branch') eq '1.3.x'
+                ? ' -lfltk_images -lfltk_png -lfltk_z -lfltk_images -lfltk_jpeg '
+                : ' -lfltk2_images -lfltk2_png -lfltk2_z -lfltk2_images -lfltk2_jpeg '
+            )
+        );
+        $self->notes('include_dirs'  => {});
+        $self->notes('library_paths' => {});
+        $self->notes(
+            define => {
+                FLTK_DATADIR => '""',    # unused
+                FLTK_DOCDIR  => '""',    # unused
+                BORDER_WIDTH => 2,       # 1.3
+                WORDS_BIGENDIAN =>
+                    ((unpack('h*', pack('s', 1)) =~ /01/) ? 1 : 0),    # both
+                U16                    => undef,                       # both
+                U32                    => undef,                       # both
+                U64                    => undef,                       # both
+                USE_X11                => undef,                       # both
+                USE_QUARTZ             => undef,                       # both
+                __APPLE_QUARTZ__       => undef,                       # 1.3.x
+                __APPLE_QD__           => undef,                       # 1.3.x
+                USE_COLORMAP           => 1,                           # both
+                USE_X11_MULTITHREADING => 0,                           # 2.0
+                USE_XFT                => 0,                           # both
+                USE_XCURSOR            => undef,
+                USE_CAIRO => ($self->notes('branch') eq '2.0.x' ? 0 : undef)
+                ,                                                      # both
+                USE_CLIPOUT      => 0,
+                USE_XSHM         => 0,
+                HAVE_XDBE        => 0,                                 # both
+                USE_XDBE         => 'HAVE_XDBE',                       # both
+                HAVE_OVERLAY     => 0,                                 # both
+                USE_OVERLAY      => 0,
+                USE_XINERAMA     => 0,
+                USE_MULTIMONITOR => 1,
+                USE_STOCK_BRUSH  => 1,
+                USE_XIM          => 1,
+                HAVE_ICONV       => 0,
+                HAVE_GL =>
+                    ($self->assert_lib({headers => ['GL/gl.h']}) ? 1 : undef)
+                ,                                                      # both
+                HAVE_GL_GLU_H => (
+                      $self->assert_lib({headers => ['GL/glu.h']}) ? 1 : undef
+                ),                                                     # both
+                HAVE_GL_OVERLAY           => 'HAVE_OVERLAY',           # both
+                USE_GL_OVERLAY            => 0,                        # 2.0
+                USE_GLEW                  => 0,                        # 2.0
+                HAVE_GLXGETPROCADDRESSARB => undef,                    # 1.3
+                HAVE_DIRENT_H => (
+                      $self->assert_lib({headers => ['dirent.h']}) ? 1 : undef
+                ),
+                HAVE_STRING_H => (
+                      $self->assert_lib({headers => ['string.h']}) ? 1 : undef
+                ),
+                HAVE_SYS_NDIR_H => (
+                    $self->assert_lib({headers => ['sys/ndir.h']}) ? 1 : undef
+                ),
+                HAVE_SYS_DIR_H => (
+                     $self->assert_lib({headers => ['sys/dir.h']}) ? 1 : undef
+                ),
+                HAVE_NDIR_H =>
+                    ($self->assert_lib({headers => ['ndir.h']}) ? 1 : undef),
+                HAVE_SCANDIR       => 1,
+                HAVE_SCANDIR_POSIX => undef,
+                HAVE_STRING_H      => (
+                      $self->assert_lib({headers => ['string.h']}) ? 1 : undef
+                ),
+                HAVE_STRINGS_H => (
+                     $self->assert_lib({headers => ['strings.h']}) ? 1 : undef
+                ),
+                HAVE_VSNPRINTF    => 1,
+                HAVE_SNPRINTF     => 1,
+                HAVE_STRCASECMP   => undef,
+                HAVE_STRDUP       => undef,
+                HAVE_STRLCAT      => undef,
+                HAVE_STRLCPY      => undef,
+                HAVE_STRNCASECMP  => undef,
+                HAVE_SYS_SELECT_H => (
+                          $self->assert_lib({headers => ['sys/select.h']}) ? 1
+                          : undef
+                ),
+                HAVE_SYS_STDTYPES_H => (
+                        $self->assert_lib({headers => ['sys/stdtypes.h']}) ? 1
+                        : undef
+                ),    # both
+                USE_POLL => 0,    # both
+                HAVE_LIBPNG => (
+                    $self->assert_lib(
+                        {   libs    => ['png'],
+                            headers => ['libpng/png.h'],
+                            code =>
+                                'int main ( ) {return png_read_rows( ); return 0;}'
+                        }
+                        ) ? 1 : undef
+                ),
+                HAVE_LIBZ => 0,  # ($self->assert_lib({libs=>['z']})?1:undef),
+                HAVE_LIBJPEG =>
+                    ($self->assert_lib({libs => ['jpeg']}) ? 1 : undef),
+                HAVE_LOCAL_PNG_H => undef,    # ! HAVE_LIBPNG
+                HAVE_PNG_H =>
+                    ($self->assert_lib({headers => ['png.h']}) ? 1 : undef),
+                HAVE_LIBPNG_PNG_H => (
+                          $self->assert_lib({headers => ['libpng/png.h']}) ? 1
+                          : undef
+                ),
+                HAVE_LOCAL_JPEG_H => (
+                          $self->assert_lib({headers => ['local/jpeg.h']}) ? 1
+                          : undef
+                ),
+                HAVE_PTHREAD => ($self->find_lib('pthread') ? 1 : undef),
+                HAVE_PTHREAD_H => (
+                     $self->assert_lib({headers => ['pthread.h']}) ? 1 : undef
+                ),
+                HAVE_EXCEPTIONS      => undef,
+                HAVE_DLOPEN          => 0,
+                BOXX_OVERLAY_BUGS    => 0,
+                SGI320_BUG           => 0,
+                CLICK_MOVES_FOCUS    => 0,
+                IGNORE_NUMLOCK       => 1,
+                USE_PROGRESSIVE_DRAW => 1,
+                HAVE_XINERAMA        => 0        # 1.3.x
+            }
+        );
+        {    # Both | All platforms | Standard headers/functions
+            my @headers = qw[dirent.h sys/ndir.h sys/dir.h ndir.h];
+        HEADER: for my $header (@headers) {
+                printf 'Checking for %s that defines DIR... ', $header;
+                my $exe = $self->assert_lib(
+                               {headers => [$header], code => sprintf <<'' });
+#include <stdio.h>
+#include <sys/types.h>
+int main ( ) {
+    if ( ( DIR * ) 0 )
+        return 0;
+    printf( "1" );
+    return 0;
+}
+
+                my $define = uc 'HAVE_' . $header;
+                if ($exe) {
+                    print "yes ($header)\n";
+                    $define =~ s|[/\.]|_|g;
+                    $self->notes('define')->{$define} = 1;
+
+                    #$self->notes('cache')->{'header_dirent'} = $header;
+                    last HEADER;
+                }
+                else {
+                    $self->notes('define')->{$define} = undef;
+                    print "no\n";    # But we can pretend...
+                }
+            }
+        }
+
+        #
+        $self->notes('define')->{'HAVE_LOCAL_PNG_H'}
+            = $self->notes('define')->{'HAVE_LIBPNG'} ? undef : 1;
+
+        #
+        {
+            print 'Locating library archiver... ';
+            my $ar = can_run('ar');
+            if (!$ar) {
+                print "Could not find the library archiver, aborting.\n";
+                exit 0;
+            }
+            $ar .= ' cr' . (can_run('ranlib') ? 's' : '');
+            $self->notes(AR => $ar);
+            print "$ar\n";
+        }
+        {
+            my %sizeof;
+            for my $type (qw[short int long]) {
+                printf 'Checking size of %s... ', $type;
+                my $exe = $self->build_exe({code => <<"" });
+static long int longval () { return (long int) (sizeof ($type)); }
+static unsigned long int ulongval () { return (long int) (sizeof ($type)); }
+#include <stdio.h>
+#include <stdlib.h>
+int main ( ) {
+    if (((long int) (sizeof ($type))) < 0) {
+        long int i = longval ();
+        if (i != ((long int) (sizeof ($type))))
+            return 1;
+        printf ("%ld", i);
+    }
+    else {
+        unsigned long int i = ulongval ();
+        if (i != ((long int) (sizeof ($type))))
+            return 1;
+        printf ("%lu", i);
+    }
+    return 0;
+}
+
+                $sizeof{$type} = $exe ? `$exe` : 0;
+                print "okay\n";
+            }
+
+            #
+            if ($sizeof{'short'} == 2) {
+                $self->notes('define')->{'U16'} = 'unsigned short';
+            }
+            if ($sizeof{'int'} == 4) {
+                $self->notes('define')->{'U32'} = 'unsigned';
+            }
+            else {
+                $self->notes('define')->{'U32'} = 'unsigned long';
+            }
+            if ($sizeof{'int'} == 8) {
+                $self->notes('define')->{'U64'} = 'unsigned';
+            }
+            elsif ($sizeof{'long'} == 8) {
+                $self->notes('define')->{'U64'} = 'unsigned long';
+            }
+            {
+                print
+                    'Checking whether the compiler recognizes bool as a built-in type... ';
+                my $exe = $self->build_exe({code => <<"" });
+#include <stdio.h>
+#include <stdlib.h>
+int f(int  x){printf ("int "); return 1;}
+int f(char x){printf ("char"); return 1;}
+int f(bool x){printf ("bool"); return 1;}
+int main ( ) {
+    bool b = true;
+    return f(b);
+}
+
+                my $type = $exe ? `$exe` : 0;
+                if ($type) { print "yes ($type)\n" }
+                else {
+                    print "no\n";    # But we can pretend...
+                    $self->notes(  'cxxflags' => $self->notes('cxxflags')
+                                 . ' -Dbool=char -Dfalse=0 -Dtrue=1 ');
+                }
+            }
+            {
+                print 'Checking for library containing pow... ';
+                my $_have_pow = '';
+            LIB: for my $lib ('', '-lm') {
+                    my $exe = $self->build_exe(
+                                  {code => <<'', extra_linker_flags => $lib});
+#include <stdio.h>
+#include <stdlib.h>
+#ifdef __cplusplus
+extern "C"
+#endif
+char pow ();
+int main ( ) {
+    printf ("1");
+    return pow ();
+    return 0;
+}
+
+                    if ($exe && `$exe`) {
+                        if   ($lib) { print "$lib\n" }
+                        else        { print "none required\n" }
+                        $self->notes(
+                             'ldflags' => $self->notes('ldflags') . " $lib ");
+                        $_have_pow = 1;
+                        last LIB;
+                    }
+                }
+                if (!$_have_pow) {
+                    print "FAIL!\n";    # XXX - quit
+                }
+            }
+            {
+                print
+                    'Checking whether we have the POSIX compatible scandir() prototype... ';
+                my $obj = $self->compile({code => <<'' });
+#include <dirent.h>
+int func (const char *d, dirent ***list, void *sort) {
+    int n = scandir(d, list, 0, (int(*)(const dirent **, const dirent **))sort);
+}
+int main ( ) {
+    return 0;
+}
+
+                if ($obj ? 1 : 0) {
+                    print "yes\n";
+                    $self->notes('define')->{'HAVE_SCANDIR_POSIX'} = 1;
+                }
+                else {
+                    print "no\n";
+                    $self->notes('define')->{'HAVE_SCANDIR_POSIX'} = undef;
+                }
+            }
+            {
+                my %functions = (
+                    strdup      => 'HAVE_STRDUP',
+                    strcasecmp  => 'HAVE_STRCASECMP',
+                    strncasecmp => 'HAVE_STRNCASECMP',
+                    strlcat     => 'HAVE_STRLCRT',
+
+                    #strlcpy     => 'HAVE_STRLCPY'
+                );
+                for my $func (keys %functions) {
+                    printf 'Checking for %s... ', $func;
+                    my $obj = $self->compile({code => <<""});
+/* Define $func to an innocuous variant, in case <limits.h> declares $func.
+   For example, HP-UX 11i <limits.h> declares gettimeofday.  */
+#define $func innocuous_$func
+/* System header to define __stub macros and hopefully few prototypes,
+    which can conflict with char $func (); below.
+    Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
+    <limits.h> exists even on freestanding compilers.  */
+#ifdef __STDC__
+# include <limits.h>
+#else
+# include <assert.h>
+#endif
+#undef $func
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char $func ();
+/* The GNU C library defines this for functions which it implements
+    to always fail with ENOSYS.  Some functions are actually named
+    something starting with __ and the normal name is an alias.  */
+#if defined __stub_$func || defined __stub___$func
+choke me
+#endif
+int main () {
+    return $func ();
+    return 0;
+}
+
+                    if ($obj) {
+                        print "yes\n";
+                        $self->notes('define')->{$functions{$func}} = 1;
+                    }
+                    else {
+                        print "no\n";
+                        $self->notes('define')->{$functions{$func}} = undef;
+                    }
+                }
+            }
+
+=pod oldversion
+
         $self->notes('define'        => {});
         $self->notes('cache'         => {});
         $self->notes('_a'            => $Config{'_a'});
         $self->notes('cxxflags'      => ' ');
+        $self->notes('ldflags'       => ' ');
         $self->notes('include_dirs'  => {});
         $self->notes('library_paths' => {});
 
@@ -356,7 +707,7 @@ int main ( ) {
 }
 
                 print "yes\n";
-                $self->notes('define')->{'HAVE_POSIX'} = 1;
+                $self->notes('define')->{'HAVE_SCANDIR'} = 1;
             }
             else { print "no\n" }
         }
@@ -383,81 +734,7 @@ int main ( ) {
             else { print "no\n" }
         }
         {
-            print "Checking string functions...\n";
-            if (($self->notes('os') =~ m[^hpux$]i)
-                && $self->notes('os_ver') == 1020)
-            {   print
-                    "\nNot using built-in snprintf function because you are running HP-UX 10.20\n";
-                $self->notes('define')->{'HAVE_SNPRINTF'} = undef;
-                print
-                    "\nNot using built-in vnprintf function because you are running HP-UX 10.20\n";
-                $self->notes('define')->{'HAVE_VNPRINTF'} = undef;
-            }
-            elsif (($self->notes('os') =~ m[^dec_osf$]i)
-                   && $self->notes('os_ver') == 40)
-            {   print
-                    "\nNot using built-in snprintf function because you are running Tru64 4.0.\n";
-                $self->notes('define')->{'HAVE_SNPRINTF'} = undef;
-                print
-                    "\nNot using built-in vnprintf function because you are running Tru64 4.0.\n";
-                $self->notes('define')->{'HAVE_VNPRINTF'} = undef;
-            }
-        }
-        {
-            my %functions = (
-                strdup      => 'HAVE_STRDUP',
-                strcasecmp  => 'HAVE_STRCASECMP',
-                strncasecmp => 'HAVE_STRNCASECMP',
-                strlcat     => 'HAVE_STRLCRT',
-
-                #strlcpy     => 'HAVE_STRLCPY'
-            );
-            for my $func (keys %functions) {
-                printf 'Checking for %s... ', $func;
-                my $obj = $self->compile({code => <<""});
-/* Define $func to an innocuous variant, in case <limits.h> declares $func.
-   For example, HP-UX 11i <limits.h> declares gettimeofday.  */
-#define $func innocuous_$func
-/* System header to define __stub macros and hopefully few prototypes,
-    which can conflict with char $func (); below.
-    Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
-    <limits.h> exists even on freestanding compilers.  */
-#ifdef __STDC__
-# include <limits.h>
-#else
-# include <assert.h>
-#endif
-#undef $func
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char $func ();
-/* The GNU C library defines this for functions which it implements
-    to always fail with ENOSYS.  Some functions are actually named
-    something starting with __ and the normal name is an alias.  */
-#if defined __stub_$func || defined __stub___$func
-choke me
-#endif
-int main ( ) {
-    return $func ( );
-    return 0;
-}
-
-                if ($obj) {
-                    print "yes\n";
-                    $self->notes('define')->{$functions{$func}} = 1;
-                }
-                else {
-                    print "no\n";
-                    $self->notes('define')->{$functions{$func}} = undef;
-                }
-            }
-        }
-        {
-            $self->find_h('pthread.h');
+            $self->assert_lib({headers=>['pthread.h']});
             last if !defined $self->notes('define')->{'HAVE_PTHREAD_H'};
             print 'Testing pthread support... ';
             if ($self->assert_lib({headers => [qw[pthread.h]]})) {
@@ -499,19 +776,19 @@ int main ( ) {
             }
         }
         {
-            $self->find_h('string.h');
-            $self->find_h('strings.h');
-            $self->find_h('sys/select.h');
-            $self->find_h('png.h');
+            $self->assert_lib({headers=>['string.h']});
+            $self->assert_lib({headers=>['strings.h']});
+            $self->assert_lib({headers=>['sys/select.h']});
+            $self->assert_lib({headers=>['png.h']});
         }
         {
             print "Setting defaults...\n";
             print "    BORDER_WIDTH = 2\n";
-            $self->notes('BORDER_WIDTH' => 2);
+            $self->notes('define')->{'BORDER_WIDTH'} = 2;
             print "    USE_COLORMAP = 1\n";
-            $self->notes('USE_COLORMAP' => 1);
-            print "    HAVE_GL_OVERLAY = 1\n";
-            $self->notes('HAVE_GL_OVERLAY' => 'HAVE_OVERLAY');
+            $self->notes('define')->{'USE_COLORMAP'} = 1;
+            print "    HAVE_GL_OVERLAY = HAVE_OVERLAY\n";
+            $self->notes('define')->{'HAVE_GL_OVERLAY'} = 'HAVE_OVERLAY';
 
 =todo
         $self->notes(
@@ -560,6 +837,7 @@ int main ( ) {
             }
         );
 =cut
+
         }
         return 1;
     }

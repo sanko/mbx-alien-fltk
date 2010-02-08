@@ -19,15 +19,11 @@ package inc::MBX::Alien::FLTK::Platform::Windows;
         );
         $self->notes(
               'cxxflags' => ' -mwindows -DWIN32 ' . $self->notes('cxxflags'));
-        $self->notes('define')->{'HAVE_STRCASECMP'}    = undef;
-        $self->notes('define')->{'HAVE_STRNCASECMP'}   = undef;
-        $self->notes('define')->{'HAVE_STRNCASECMP'}   = undef;
-        $self->notes('define')->{'HAVE_DIRENT_H'}      = undef;
-        $self->notes('define')->{'HAVE_SYS_NDIR_H'}    = undef;
-        $self->notes('define')->{'HAVE_SYS_DIR_H'}     = undef;
-        $self->notes('define')->{'HAVE_NDIR_H'}        = undef;
-        $self->notes('define')->{'HAVE_SCANDIR'}       = undef;
-        $self->notes('define')->{'HAVE_SCANDIR_POSIX'} = undef;
+        $self->notes('define')->{'HAVE_DIRENT_H'}   = undef;
+        $self->notes('define')->{'HAVE_SYS_NDIR_H'} = undef;
+        $self->notes('define')->{'HAVE_SYS_DIR_H'}  = undef;
+        $self->notes('define')->{'HAVE_NDIR_H'}     = undef;
+        $self->notes('define')->{'HAVE_SCANDIR'}    = undef;
     GL: {
             last GL if !$self->find_h('GL/gl.h');
             print 'Testing GL Support... ';
