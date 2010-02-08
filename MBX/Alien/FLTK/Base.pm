@@ -844,19 +844,41 @@ int main ( ) {
 
     sub build_fltk {
         my ($self, $build) = @_;
-        $self->quiet(1);
         $self->notes('libs' => []);
+        if (!chdir $self->base_dir()) {
+            print 'Failed to cd to base directory';
+            exit 0;
+        }
         my $libs = $self->notes('libs_source');
         for my $lib (sort { lc $a cmp lc $b } keys %$libs) {
             next if $libs->{$lib}{'disabled'};
             print "Building $lib...\n";
+            my $cwd = _abs(_cwd());
             if (!chdir _path($build->fltk_dir(), $libs->{$lib}{'directory'}))
-            {   printf 'Cannot chdir to %s to build %s',
+            {   printf 'Cannot chdir to %s to build %s: %s',
                     _path($build->fltk_dir(), $libs->{$lib}{'directory'}),
-                    $lib;
+                    $lib, $!;
                 exit 0;
             }
             my @obj;
+            my %include_dirs = %{$self->notes('include_dirs')};
+            for my $dir (grep { defined $_ } (
+                           split(' ', $Config{'incpath'}),
+                           $build->fltk_dir(),
+                           '..',
+                           map { $build->fltk_dir($_) || () } (
+                                $self->notes('include_path_compatability'),
+                                $self->notes('include_path_images'),
+                                $self->notes('include_path_images') . '/zlib/'
+                           )
+                         )
+                )
+            {   $include_dirs{_rel(_realpath($dir))}++;
+            }
+
+            #use Data::Dump;
+            #ddx \%include_dirs;
+            #die;
             for my $src (sort { lc $a cmp lc $b } @{$libs->{$lib}{'source'}})
             {   my $obj = _o($src);
                 $obj
@@ -866,23 +888,11 @@ int main ( ) {
                     print "Compiling $src...\n";
                     return
                         $self->compile(
-                          {source       => $src,
-                           include_dirs => [
-                               $Config{'incpath'},
-                               $build->fltk_dir(),
-                               $build->fltk_dir($self->notes('headers_path')),
-                               $build->fltk_dir(
-                                    $self->notes('include_path_compatability')
-                               ),
-                               $build->fltk_dir(
-                                           $self->notes('include_path_images')
-                                               . '/zlib/'
-                               ),
-                               (keys %{$self->notes('include_dirs')})
-                           ],
-                           cxxflags => [$Config{'ccflags'}, '-MD'],
-                           output   => $obj
-                          }
+                                     {source       => $src,
+                                      include_dirs => [keys %include_dirs],
+                                      cxxflags => [$Config{'ccflags'}, '-MD'],
+                                      output   => $obj
+                                     }
                         );
                     }
                     ->();
@@ -890,21 +900,28 @@ int main ( ) {
                     printf 'Failed to compile %s', $src;
                     exit 0;
                 }
-                push @obj, $obj;
+                push @obj, _abs($obj);
+            }
+            if (!chdir $cwd) {
+                printf 'Cannot chdir to %s after building %s: %s',
+                    $cwd, $lib, $!;
+                exit 0;
             }
             my $_lib = _rel($build->fltk_dir('lib/' . _a($lib)));
-            $lib
+            printf 'Archiving %s... ', $lib;
+            $_lib
                 = $build->up_to_date(\@obj, $_lib)
                 ? $_lib
-                : $self->archive({output  => $_lib,
+                : $self->archive({output  => _abs($_lib),
                                   objects => \@obj
                                  }
                 );
-            if (!$lib) {
+            if (!$_lib) {
                 printf 'Failed to create %s library', $lib;
                 exit 0;
             }
-            push @{$self->notes('libs')}, _abs($lib);
+            push @{$self->notes('libs')}, $_lib;
+            print "done\n";
         }
         if (!chdir $build->fltk_dir()) {
             print 'Failed to cd to ' . $self->fltk_dir() . ' to return home';
