@@ -1043,62 +1043,43 @@ END
         # Ganked from Devel::CheckLib
         sub assert_lib {
             my ($self, $args) = @_;
-            my (@libs, @libpaths, @headers, @incpaths);
 
-            # FIXME: these four just SCREAM "refactor" at me
-            @libs = (
-                ref($args->{' lib '})
-                ? @{$args->{
-                        ' lib
-                '
-                        }
-                    }
-                : $args->{' lib '}
-            ) if $args->{' lib '};
-            @libpaths = (ref($args->{' libpath '})
-                         ? @{$args->{' libpath '}}
-                         : $args->{' libpath '}
-            ) if $args->{' libpath '};
-            @headers = (ref($args->{' header '})
-                        ? @{$args->{' header '}}
-                        : $args->{' header '}
-            ) if $args->{' header '};
-            @incpaths = (ref($args->{' incpath '})
-                         ? @{$args->{' incpath '}}
-                         : $args->{' incpath '}
-            ) if $args->{' incpath '};
-            my @missing;
+            # Defaults
+            $args->{'code'}         ||= 'int main( ) { return 0; }';
+            $args->{'include_dirs'} ||= ();
+            $args->{'lib_dirs'}     ||= ();
+            $args->{'headers'}      ||= ();
+            $args->{'libs'}         ||= ();
 
-            # first figure out which headers we can' t find ...
-            for my $header (@headers) {
-                my $exe =
-                    $self->build_exe(
-                    {code =>
-                         "#include <$header>\nint main(void) { return 0; }\n",
-                     include_dirs => \@incpaths,
-                     lib_dirs     => \@libpaths
-                    }
+            #use Data::Dumper;
+            #warn Dumper $args;
+            # first figure out which headers we can' t find...
+            for my $header (@{$args->{'headers'}}) {
+                next
+                    if $self->compile(
+                            {code => "#include <$header>\n" . $args->{'code'},
+                             include_dirs => $args->{'include_dirs'},
+                             lib_dirs     => $args->{'lib_dirs'}
+                            }
                     );
-                if   (defined $exe && -x $exe) { unlink $exe }
-                else                           { push @missing, $header }
+                print "Cannot include $header ";
+                return 0;
             }
 
             # now do each library in turn with no headers
-            for my $lib (@libs) {
-                my $exe =
-                    $self->build_exe(
-                                    {code => "int main(void) { return 0; }\n",
-                                     include_dirs       => \@incpaths,
-                                     lib_dirs           => \@libpaths,
-                                     extra_linker_flags => "-l$lib"
-                                    }
+            for my $lib (@{$args->{'libs'}}) {
+                next
+                    if $self->test_exe(
+                           {code =>
+                                join("\n",
+                                (map {"#include <$_>"} @{$args->{'headers'}}),
+                                $args->{'code'}),
+                            include_dirs       => $args->{'include_dirs'},
+                            lib_dirs           => $args->{'lib_dirs'},
+                            extra_linker_flags => "-l$lib"
+                           }
                     );
-                if   (defined $exe && -x $exe) { unlink $exe }
-                else                           { push @missing, $lib }
-            }
-            my $miss_string = join(q{, }, map {qq{'$_'}} @missing);
-            if (@missing) {
-                warn "Can't link/include $miss_string\n";
+                print "Cannot link $lib ";
                 return 0;
             }
             return 1;
