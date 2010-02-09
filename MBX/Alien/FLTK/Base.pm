@@ -163,6 +163,7 @@ package inc::MBX::Alien::FLTK::Base;
         $self->notes('ldflags'  => '');
         $self->notes('cxxflags' => '');
         $self->notes('GL'       => '');
+        $self->notes('define'   => {});
         $self->notes(
             'image_flags' => (
 
@@ -281,7 +282,7 @@ int main ( ) {
                 my $print = '';
                 for my $key (@defines) {
                     $print
-                        .= '#ifdef '
+                        .= '#ifdef ' 
                         . $key . "\n"
                         . '    printf("'
                         . $key
@@ -1003,7 +1004,6 @@ int main ( ) {
             }
         );
 =cut
-
         }
         return 1;
     }
