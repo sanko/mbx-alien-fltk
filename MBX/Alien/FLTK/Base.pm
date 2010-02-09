@@ -10,7 +10,7 @@ package inc::MBX::Alien::FLTK::Base;
     use base 'Module::Build';
     use lib '../../../../';
     use inc::MBX::Alien::FLTK::Utility
-        qw[_o _a _path _realpath _dir _file _rel _abs _exe _cwd can_run];
+        qw[_o _a _path _realpath _dir _file _rel _abs _exe _cwd can_run run];
     use lib '.';
 
     sub fltk_dir {
@@ -32,7 +32,7 @@ package inc::MBX::Alien::FLTK::Base;
         my $arch = $args->{'output'};
         my @cmd = ($self->notes('AR'), $arch, @{$args->{'objects'}});
         print STDERR "@cmd\n" if !$self->quiet;
-        return inc::MBX::Alien::FLTK::Utility::run(@cmd) ? $arch : ();
+        return run(@cmd) ? $arch : ();
     }
 
     sub test_exe {
