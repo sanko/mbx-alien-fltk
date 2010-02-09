@@ -1358,21 +1358,25 @@ END
             #warn Dumper $args;
             # first figure out which headers we can' t find...
             for my $header (@{$args->{'headers'}}) {
-                next
-                    if $self->compile(
+                printf 'Trying to compile with %s... ', $header;
+                if ($self->compile(
                             {code => "#include <$header>\n" . $args->{'code'},
                              include_dirs => $args->{'include_dirs'},
                              lib_dirs     => $args->{'lib_dirs'}
                             }
-                    );
-                print "Cannot include $header ";
+                    )
+                    )
+                {   print "okay\n";
+                    next;
+                }
+                print "Cannot include $header\n";
                 return 0;
             }
 
             # now do each library in turn with no headers
             for my $lib (@{$args->{'libs'}}) {
-                next
-                    if $self->test_exe(
+                printf 'Trying to link with %s... ', $lib;
+                if ($self->test_exe(
                            {code =>
                                 join("\n",
                                 (map {"#include <$_>"} @{$args->{'headers'}}),
@@ -1381,7 +1385,11 @@ END
                             lib_dirs           => $args->{'lib_dirs'},
                             extra_linker_flags => "-l$lib"
                            }
-                    );
+                    )
+                    )
+                {   print "okay\n";
+                    next;
+                }
                 print "Cannot link $lib ";
                 return 0;
             }
