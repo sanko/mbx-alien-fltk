@@ -109,11 +109,13 @@ If I'm just missing something... patches welcome.
                     my $incdir = sprintf $format, 'include';
                     my $libdir = sprintf $format, 'lib';
                     if ($self->assert_lib(
-                                     {libs     => ['Xcursor'],
-                                      lib_dirs => [$libdir],
-                                      headers  => ['X11/Xcursor/Xcursor.h'],
-                                      include_dirs => [$incdir]
-                                     }
+                            {   libs         => ['Xcursor'],
+                                lib_dirs     => [$libdir],
+                                headers      => ['X11/Xcursor/Xcursor.h'],
+                                include_dirs => [$incdir],
+
+            #code => 'int main(){return XcursorImageLoadCursor (); return 0;}'
+                            }
                         )
                         )
                     {   $self->notes('include_dirs')->{_abs($incdir)}++;

@@ -1003,6 +1003,7 @@ int main ( ) {
             }
         );
 =cut
+
         }
         return 1;
     }
@@ -1069,8 +1070,8 @@ int main ( ) {
                 push @obj, _abs($obj);
             }
             if (!chdir $cwd) {
-                printf 'Cannot chdir to %s after building %s: %s',
-                    $cwd, $lib, $!;
+                printf 'Cannot chdir to %s after building %s: %s', $cwd, $lib,
+                    $!;
                 exit 0;
             }
             my $_lib = _rel($build->fltk_dir('lib/' . _a($lib)));

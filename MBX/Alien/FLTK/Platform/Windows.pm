@@ -14,16 +14,17 @@ package inc::MBX::Alien::FLTK::Platform::Windows;
         my ($self) = @_;
         $self->quiet(1);
         $self->SUPER::configure();
-        $self->notes(ldflags => $self->notes('ldflags')
-                 . ' -mwindows -lmsimg32 -lole32 -luuid -lcomctl32 -lwsock32 '
-        );
-        $self->notes(
-              'cxxflags' => ' -mwindows -DWIN32 ' . $self->notes('cxxflags'));
-        $self->notes('define')->{'HAVE_DIRENT_H'}   = undef;
-        $self->notes('define')->{'HAVE_SYS_NDIR_H'} = undef;
-        $self->notes('define')->{'HAVE_SYS_DIR_H'}  = undef;
-        $self->notes('define')->{'HAVE_NDIR_H'}     = undef;
-        $self->notes('define')->{'HAVE_SCANDIR'}    = undef;
+        $self->notes(  ldflags => ' -mwindows '
+                     . $self->notes('ldflags')
+                     . ' -lmsimg32 -lole32 -luuid -lcomctl32 -lwsock32');
+        $self->notes('cxxflags' => '-mwindows -DWIN32 -Wno-non-virtual-dtor '
+                     . $self->notes('cxxflags'));
+
+        #$self->notes('define')->{'HAVE_DIRENT_H'}   = undef;
+        #$self->notes('define')->{'HAVE_SYS_NDIR_H'} = undef;
+        #$self->notes('define')->{'HAVE_SYS_DIR_H'}  = undef;
+        #$self->notes('define')->{'HAVE_NDIR_H'}     = undef;
+        $self->notes('define')->{'HAVE_SCANDIR'} = undef;
     GL: {
             last GL if !$self->find_h('GL/gl.h');
             print 'Testing GL Support... ';
