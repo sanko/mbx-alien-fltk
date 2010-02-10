@@ -165,6 +165,7 @@ x-dev, and libxcursor-dev. If I'm just missing something... patches welcome.
                 if (!$Xi_okay) {
                     $self->_error({stage   => 'configure',
                                    fatal   => 1,
+                                   exit    => 1,
                                    message => <<'' });
 Failed to find the XInput Extension. You probably need to install the XInput
 Extension development package first. On Debian Linux, this is the libxi-dev
