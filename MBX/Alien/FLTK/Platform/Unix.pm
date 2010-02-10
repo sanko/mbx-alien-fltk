@@ -119,7 +119,7 @@ If I'm just missing something... patches welcome.
                         )
                         )
                     {   $self->notes('include_dirs')->{_abs($incdir)}++;
-                        $self->notes('ldflags' => " -L$libdir -lXcursor  "
+                        $self->notes('ldflags' => " -L$libdir -lXcursor "
                                      . $self->notes('ldflags'));
                         $self->notes('define')->{'USE_XCURSOR'} = 1;
                         print "okay\n";
@@ -128,8 +128,7 @@ If I'm just missing something... patches welcome.
                 }
                 if (!$self->notes('define')->{'USE_XCURSOR'}) {
                     $self->_error({stage   => 'configure',
-                                   fatal   => 1,
-                                   exit    => 1,
+                                   fatal   => 0,
                                    message => <<'' });
 Failed to find the XCursor libs. You probably need to install the X11
 development package first. On Debian Linux, these are the packages libx11-dev,
