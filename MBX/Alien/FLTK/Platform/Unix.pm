@@ -24,9 +24,6 @@ package inc::MBX::Alien::FLTK::Platform::Unix;
 
         # Asssumed true since this is *nix
         $self->notes('define')->{'USE_X11'} = !grep {m[^no_x11$]} @args;
-        print "have pthread... yes (assumed)\n";
-        $self->notes('define')->{'HAVE_PTHREAD'} = 1;
-        $self->notes('ldflags' => $self->notes('ldflags') . ' -lpthread ');
         $self->notes('define')->{'HAVE_SYS_NDIR_H'}
             = ($self->assert_lib({headers => ['sys/ndir.h']}) ? 1 : undef);
         $self->notes('define')->{'HAVE_SYS_DIR_H'}
@@ -104,7 +101,7 @@ If I'm just missing something... patches welcome.
             }
             {
                 print 'Checking for Xcursor libs... ';
-                $self->notes('define')->{'USE_XCURSOR'} = 0;
+                $self->notes('define')->{'USE_XCURSOR'} = undef;
                 for my $format ($self->_x11_()) {
                     my $incdir = sprintf $format, 'include';
                     my $libdir = sprintf $format, 'lib';
@@ -119,8 +116,8 @@ If I'm just missing something... patches welcome.
                         )
                         )
                     {   $self->notes('include_dirs')->{_abs($incdir)}++;
-                        $self->notes('ldflags' => " -L$libdir -lXcursor "
-                                     . $self->notes('ldflags'));
+                        $self->notes(  'ldflags' => $self->notes('ldflags')
+                                     . " -L$libdir -lXcursor");
                         $self->notes('define')->{'USE_XCURSOR'} = 1;
                         print "okay\n";
                         last;
@@ -155,8 +152,8 @@ x-dev, and libxcursor-dev. If I'm just missing something... patches welcome.
                         )
                         )
                     {   $self->notes('include_dirs')->{_abs($incdir)}++;
-                        $self->notes('ldflags' => " -L$libdir -lXext -lXi "
-                                     . $self->notes('ldflags'));
+                        $self->notes(  'ldflags' => $self->notes('ldflags')
+                                     . " -L$libdir -lXi -lXext");
                         $Xi_okay = 1;
                         print "okay\n";
                         last XI;
@@ -219,6 +216,9 @@ package. If I'm just missing something... patches welcome.
                     if $lib =~ m[gl$]i;
             }
         }
+        print "have pthread... yes (assumed)\n";
+        $self->notes('define')->{'HAVE_PTHREAD'} = 1;
+        $self->notes('ldflags' => $self->notes('ldflags') . ' -lpthread ');
         $self->quiet(0);
         return 1;
     }
