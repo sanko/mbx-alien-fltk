@@ -259,7 +259,7 @@ int main ( ) {
             warn _abs cwd;
             if (chdir(_abs $self->fltk_dir())
                 && run('sh', './configure'))
-            {   use Data::Dump;
+            {   #use Data::Dump;
                 my @defines = qw[FLTK_DATADIR FLTK_DOCDIR BORDER_WIDTH
                     USE_X11 USE_QUARTZ __APPLE_QUARTZ__ __APPLE_QD__
                     USE_COLORMAP USE_X11_MULTITHREADING USE_XFT USE_XCURSOR
