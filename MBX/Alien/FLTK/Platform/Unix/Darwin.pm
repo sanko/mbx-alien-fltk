@@ -13,11 +13,32 @@ package inc::MBX::Alien::FLTK::Platform::Unix::Darwin;
     sub configure {
         my ($self) = @_;
         $self->SUPER::configure(qw[no_gl no_x11]) || return 0;
-        $self->notes('define')->{'USE_QUARTZ'} = 1;    # Alpha
-        $self->notes(
-               ldflags => ' -framework Carbon -framework ApplicationServices '
-                   . $self->notes('ldflags'));
+        $self->notes(    # MacOS X uses Carbon for graphics...
+            ldflags =>
+                ' -framework Carbon -framework Cocoa -framework ApplicationServices '
+                . $self->notes('ldflags')
+        );
+        $self->notes(    # We know that Carbon is deprecated on OS X 10.4. To
+             # avoid hundreds of warnings we will temporarily disable 'deprecated'
+             # warnings on OS X.
+            cxxflags => ' -Wno-deprecated-declarations '
+                . $self->notes('cxxflags')
+        ) if $self->notes('os_ver') >= 800;
+
+        # Starting with 10.6 (Snow Leopard), OS X does not support Carbon
+        # calls anymore. We patch this until we are completely Cocoa compliant
+        # by limiting ourselves to 32 bit Intel compiles
+        my ($ver_rev) = (qx[sw_vers -productVersion] =~ m[([\.\d\d]+)]);
+        my ($ver, $rev) = ($ver_rev =~ m[^(\d+)\.(\d+)$]);
+        if (($ver > 10) || (($ver == 10) && $rev >= 5)) {
+            $self->notes(ldflags => $self->notes('ldflags') . ' -arch i386 ');
+            $self->notes(
+                       cxxflags => $self->notes('cxxflags') . ' -arch i386 ');
+        }
         $self->notes(GL => ' -framework AGL -framework OpenGL ');
+        $self->notes('define')->{'USE_QUARTZ'}       = 1;    # Alpha
+        $self->notes('define')->{'__APPLE_QUARTZ__'} = 1;    # Alpha
+        $self->notes('define')->{'__APPLE_COCOA__'}  = 1;    # Alpha
         return 1;
     }
     1;
