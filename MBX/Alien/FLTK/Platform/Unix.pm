@@ -65,8 +65,8 @@ package inc::MBX::Alien::FLTK::Platform::Unix;
             else { print "no\n" }
         }
         {    # X11 stuff
+            last if grep {m[^no_x11$]} @args;
             {
-                last if grep {m[^no_x11$]} @args;
                 $self->notes('define')->{'USE_X11'} = 1;
                 print 'Checking for X11 libs... ';
                 my $can_haz_x11 = 0;
