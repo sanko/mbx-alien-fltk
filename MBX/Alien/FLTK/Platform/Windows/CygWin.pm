@@ -8,13 +8,31 @@ package inc::MBX::Alien::FLTK::Platform::Windows::CygWin;
     use inc::MBX::Alien::FLTK::Utility qw[_o _a _rel _abs can_run];
     use inc::MBX::Alien::FLTK;
     use base 'inc::MBX::Alien::FLTK::Platform::Windows';
+    use inc::MBX::Alien::FLTK::Platform::Unix;
     $|++;
 
     sub configure {
         my ($self) = @_;
-        $self->SUPER::configure() || return 0;
+        if (0 && 'enable_cygwin') {    # XXX - untested
+            $self->inc::MBX::Alien::FLTK::Platform::Unix::configure(qw[no_gl])
+                || last;
+            $self->SUPER::configure(qw[no_base]);
 
-        # XXX - X11 support
+            # XXX - Requires X11 support from Platform::Unix
+            $self->notes(ldflags  => $self->notes('ldflags') . ' -D_WIN32');
+            $self->notes(cxxflags => $self->notes('cxxflags') . ' -D_WIN32');
+            return 1;
+        }
+
+        # Fallback which I hope works...
+        $self->SUPER::configure();
+        $self->inc::MBX::Alien::FLTK::Platform::Unix::configure(
+                                                    qw[no_gl no_base no_x11]);
+        $self->notes('define')->{'_WIN32'}       = 1;
+        $self->notes('define')->{'USE_X11'}      = 0;
+        $self->notes('define')->{'HAVE_SCANDIR'} = 1;
+        $self->notes(ldflags  => $self->notes('ldflags') . ' -D_WIN32');
+        $self->notes(cxxflags => $self->notes('cxxflags') . ' -D_WIN32');
         return 1;
     }
     1;
