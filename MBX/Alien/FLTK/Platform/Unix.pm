@@ -13,7 +13,8 @@ package inc::MBX::Alien::FLTK::Platform::Unix;
     sub configure {
         my ($self, @args) = @_;
         $self->quiet(1);
-        $self->SUPER::configure();    # Get basic config data
+        $self->SUPER::configure()
+            if !grep {m[no_base]} @args;    # Get basic config data
         $self->notes(
             os_ver => ${
                 my $x = `uname -r`;

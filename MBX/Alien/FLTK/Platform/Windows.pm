@@ -11,9 +11,10 @@ package inc::MBX::Alien::FLTK::Platform::Windows;
     $|++;
 
     sub configure {
-        my ($self) = @_;
+        my ($self, @args) = @_;
         $self->quiet(1);
-        $self->SUPER::configure();
+        $self->SUPER::configure()
+            if !grep {m[no_base]} @args;    # Get basic config data
         $self->notes(  ldflags => ' -mwindows '
                      . $self->notes('ldflags')
                      . ' -lmsimg32 -lole32 -luuid -lcomctl32 -lwsock32');
