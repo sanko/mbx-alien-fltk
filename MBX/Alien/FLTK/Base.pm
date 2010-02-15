@@ -1004,6 +1004,7 @@ int main ( ) {
             }
         );
 =cut
+
         }
         return 1;
     }
@@ -1054,12 +1055,14 @@ int main ( ) {
                     : sub {
                     print "Compiling $src...\n";
                     return
-                        $self->compile(
-                                     {source       => $src,
-                                      include_dirs => [keys %include_dirs],
-                                      cxxflags => [$Config{'ccflags'}, '-MD'],
-                                      output   => $obj
-                                     }
+                        $self->compile({source       => $src,
+                                        include_dirs => [keys %include_dirs],
+                                        extra_compiler_flags =>
+                                            join(' ',
+                                                 $Config{'ccflags'}, '-MD',
+                                                 $self->notes('cxxflags')),
+                                        output => $obj,
+                                       }
                         );
                     }
                     ->();
