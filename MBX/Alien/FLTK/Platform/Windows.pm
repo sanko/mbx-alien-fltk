@@ -27,6 +27,7 @@ package inc::MBX::Alien::FLTK::Platform::Windows;
         #$self->notes('define')->{'HAVE_NDIR_H'}     = undef;
         $self->notes('define')->{'HAVE_SCANDIR'} = undef;
     GL: {
+            last if grep {m[^no_gl$]} @args;
             last GL if !$self->find_h('GL/gl.h');
             print 'Testing GL Support... ';
             if (!$self->assert_lib({lib => 'opengl32', header => 'GL/gl.h'}))
