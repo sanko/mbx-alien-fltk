@@ -20,6 +20,8 @@ package inc::MBX::Alien::FLTK::Platform::Windows;
                      . ' -lmsimg32 -lole32 -luuid -lcomctl32 -lwsock32');
         $self->notes('cxxflags' => '-mwindows -DWIN32 -Wno-non-virtual-dtor '
                      . $self->notes('cxxflags'));
+        $self->notes(
+                   'cflags' => '-mwindows -DWIN32 ' . $self->notes('cflags'));
 
         #$self->notes('define')->{'HAVE_DIRENT_H'}   = undef;
         #$self->notes('define')->{'HAVE_SYS_NDIR_H'} = undef;

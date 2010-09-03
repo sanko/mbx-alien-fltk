@@ -16,15 +16,7 @@ package inc::MBX::Alien::FLTK::Base;
     sub fltk_dir {
         my ($self, $extra) = @_;
         $self->depends_on('extract_fltk');
-        return (_path($self->base_dir,
-                      $self->notes('extract'),
-                      (      'fltk-'
-                           . $self->notes('branch') . '-r'
-                           . $self->notes('svn')
-                      ),
-                      $extra || ()
-                )
-        );
+        return _path $self->notes('fltk_dir'), ($extra || '');
     }
 
     sub archive {
@@ -47,8 +39,9 @@ package inc::MBX::Alien::FLTK::Base;
     sub compile {
         my ($self, $args) = @_;
         local $^W = 0;
-        local $self->cbuilder->{'quiet'} = 1;
-        my $code = 0;
+        my $cbuilder = $self->cbuilder;
+        local $cbuilder->{'quiet'} = 1;
+        local $cbuilder->{'config'}{'archlibexp'} = '---break---';
         if (!$args->{'source'}) {
             (my $FH, $args->{'source'}) = tempfile(
                                      undef, SUFFIX => '.cpp'    #, UNLINK => 1
@@ -61,10 +54,12 @@ package inc::MBX::Alien::FLTK::Base;
                          . "\n"
             );
             close $FH;
-            $code = 1;
+            $self->add_to_cleanup($args->{'source'});
         }
+        open(my ($OLDERR), ">&STDERR");
+        close *STDERR;
         my $obj = eval {
-            $self->cbuilder->compile(
+            $cbuilder->compile(
                   ($args->{'source'} !~ m[\.c$] ? ('C++' => 1) : ()),
                   source => $args->{'source'},
                   ($args->{'include_dirs'}
@@ -77,17 +72,20 @@ package inc::MBX::Alien::FLTK::Base;
                   )
             );
         };
-
-        #unlink $args->{'source'} if $code;
+        open(*STDERR, '>&', $OLDERR)
+            || exit !print "Couldn't restore STDERR: $!\n";
         return $obj ? $obj : ();
     }
 
     sub link_exe {
         my ($self, $args) = @_;
         local $^W = 0;
-        local $self->cbuilder->{'quiet'} = 1;
+
+        #my $cbuilder = ExtUtils::CBuilder->new(config=>{cc => 'cl'});
+        my $cbuilder = $self->cbuilder;
+        local $cbuilder->{'quiet'} = 1;
         my $exe = eval {
-            $self->cbuilder->link_executable(
+            $cbuilder->link_executable(
                                      objects            => $args->{'objects'},
                                      extra_linker_flags => (
                                          (  $args->{'extra_linker_flags'}
@@ -162,6 +160,7 @@ package inc::MBX::Alien::FLTK::Base;
         $self->notes('_a'       => $Config{'_a'});
         $self->notes('ldflags'  => '');
         $self->notes('cxxflags' => '');
+        $self->notes('cflags'   => '');
         $self->notes('GL'       => '');
         $self->notes('define'   => {});
         $self->notes(
@@ -251,6 +250,8 @@ int main ( ) {
             else {
                 print "no\n";    # But we can pretend...
                 $self->notes(  'cxxflags' => $self->notes('cxxflags')
+                             . ' -Dbool=char -Dfalse=0 -Dtrue=1 ');
+                $self->notes(  'cflags' => $self->notes('cflags')
                              . ' -Dbool=char -Dfalse=0 -Dtrue=1 ');
             }
         }
@@ -536,7 +537,7 @@ int main ( ) { return jpeg_destroy_decompress( ); return 0;}
         {    # Both | All platforms | Standard headers/functions
             my @headers = qw[dirent.h sys/ndir.h sys/dir.h ndir.h];
         HEADER: for my $header (@headers) {
-                printf 'Checking for %s that defines DIR... ', $header;
+                printf "Checking for %s that defines DIR...\n", $header;
                 my $exe = $self->assert_lib(
                                {headers => [$header], code => sprintf <<'' });
 #include <stdio.h>
@@ -550,7 +551,7 @@ int main ( ) {
 
                 my $define = uc 'HAVE_' . $header;
                 if ($exe) {
-                    print "yes ($header)\n";
+                    print "    yes ($header)\n";
                     $define =~ s|[/\.]|_|g;
                     $self->notes('define')->{$define} = 1;
 
@@ -675,336 +676,6 @@ int main () {
                     }
                 }
             }
-
-=pod oldversion
-
-        $self->notes('define'        => {});
-        $self->notes('cache'         => {});
-        $self->notes('_a'            => $Config{'_a'});
-        $self->notes('cxxflags'      => ' ');
-        $self->notes('ldflags'       => ' ');
-        $self->notes('include_dirs'  => {});
-        $self->notes('library_paths' => {});
-
-        # Let's get started
-        {    # Both | All platforms
-            print 'Locating library archiver... ';
-            my $ar = can_run('ar');
-            if (!$ar) {
-                print "Could not find the library archiver, aborting.\n";
-                exit 0;
-            }
-            $ar .= ' cr' . (can_run('ranlib') ? 's' : '');
-            $self->notes('AR' => $ar);
-            print "$ar\n";
-        }
-        {    # Both | All platforms
-            print 'Checking whether byte ordering is big-endian... ';
-            my $bigendian = ((unpack('h*', pack('s', 1)) =~ /01/) ? 1 : 0);
-            $self->notes('define')->{'WORDS_BIGENDIAN'} = $bigendian;
-            print $bigendian ? "yes\n" : "no\n";
-        }
-        {    # Both | All platforms
-            for my $type (qw[short int long]) {
-                printf 'Checking size of %s... ', $type;
-                my $exe = $self->build_exe({code => <<"" });
-static long int longval () { return (long int) (sizeof ($type)); }
-static unsigned long int ulongval () { return (long int) (sizeof ($type)); }
-#include <stdio.h>
-#include <stdlib.h>
-int main ( ) {
-    if (((long int) (sizeof ($type))) < 0) {
-        long int i = longval ();
-        if (i != ((long int) (sizeof ($type))))
-            return 1;
-        printf ("%ld", i);
-    }
-    else {
-        unsigned long int i = ulongval ();
-        if (i != ((long int) (sizeof ($type))))
-            return 1;
-        printf ("%lu", i);
-    }
-    return 0;
-}
-
-                $self->notes('cache')->{'sizeof'}{$type} = $exe ? `$exe` : ();
-                print((  $self->notes('cache')->{'sizeof'}{$type}
-                       ? $self->notes('cache')->{'sizeof'}{$type}
-                       : "unsupported"
-                      )
-                      . "\n"
-                );
-            }
-            if ($self->notes('cache')->{'sizeof'}{'short'} == 2) {
-                $self->notes('define')->{'U16'} = 'unsigned short';
-            }
-            if ($self->notes('cache')->{'sizeof'}{'int'} == 4) {
-                $self->notes('define')->{'U32'} = 'unsigned';
-            }
-            else {
-                $self->notes('define')->{'U32'} = 'unsigned long';
-            }
-            if ($self->notes('cache')->{'sizeof'}{'int'} == 8) {
-                $self->notes('define')->{'U64'} = 'unsigned';
-            }
-            elsif ($self->notes('cache')->{'sizeof'}{'long'} == 8) {
-                $self->notes('define')->{'U64'} = 'unsigned long';
-            }
-        }
-        {    # Both | All platforms
-            print
-                'Checking whether the compiler recognizes bool as a built-in type... ';
-            my $exe = $self->build_exe({code => <<'' });
-#include <stdio.h>
-#include <stdlib.h>
-int f(int  x){printf ("int "); return 1;}
-int f(char x){printf ("char"); return 1;}
-int f(bool x){printf ("bool"); return 1;}
-int main ( ) {
-    bool b = true;
-    return f(b);
-}
-
-            my $type = $exe ? `$exe` : 0;
-            if ($type) { print "yes ($type)\n" }
-            else {
-                print "no\n";    # But we can pretend...
-                $self->notes('cxxflags' => ' -Dbool=char -Dfalse=0 -Dtrue=1 '
-                             . $self->notes('cxxflags'));
-            }
-        }
-        {    # Both | All platforms | Standard headers/functions
-            my @headers = qw[dirent.h sys/ndir.h sys/dir.h ndir.h];
-            for my $header (@headers) { }
-        HEADER: for my $header (@headers) {
-                printf 'Checking for %s that defines DIR... ', $header;
-                my $exe = $self->build_exe({code => sprintf <<'' , $header});
-#include <stdio.h>
-#include <sys/types.h>
-#include <%s>
-int main ( ) {
-    if ( ( DIR * ) 0 )
-        return 0;
-    printf( "1" );
-    return 0;
-}
-
-                if ($exe ? `$exe` : 0) {
-                    print "yes ($header)\n";
-                    my $define = uc 'HAVE_' . $header;
-                    $define =~ s|[/\.]|_|g;
-                    $self->notes('define')->{$define} = 1;
-                    $self->notes('cache')->{'header_dirent'} = $header;
-                    last HEADER;
-                }
-                else {
-                    print "no\n";    # But we can pretend...
-                }
-            }
-        }
-        {   # Two versions of opendir et al. are in -ldir and -lx on SCO Xenix
-            if ($self->notes('cache')->{'header_dirent'} eq 'dirent.h') {
-                print 'Checking for library containing opendir... ';
-            LIB: for my $lib ('', '-ldir', '-lx', '-lc') {
-                    my $exe = $self->build_exe(
-                                  {code => <<'', extra_linker_flags => $lib});
-#include <stdio.h>
-#include <stdlib.h>
-#ifdef __cplusplus
-extern "C"
-#endif
-char opendir ( );
-int main () {
-    return opendir ( );
-    return 0;
-}
-
-                    if ($exe) {
-                        if   ($lib) { print "$lib\n" }
-                        else        { print "none required\n" }
-                        $self->notes(
-                             'ldflags' => " $lib " . $self->notes('ldflags'));
-                        $self->notes('cache')->{'opendir_lib'} = $lib;
-                        last LIB;
-                    }
-                }
-                if (!defined $self->notes('cache')->{'opendir_lib'}) {
-                    print "FAIL!\n";    # XXX - quit
-                }
-            }
-        }
-        {
-            print 'Checking for scandir... ';
-            if ($self->build_exe({code => <<''})) {
-#include <stdio.h>
-#include <stdlib.h>
-#ifdef __cplusplus
-extern "C"
-#endif
-/* Define scandir to an innocuous variant, in case <limits.h> declares scandir.
-   For example, HP-UX 11i <limits.h> declares gettimeofday.  */
-#define scandir innocuous_scandir
-/* System header to define __stub macros and hopefully few prototypes,
-    which can conflict with char scandir (); below.
-    Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
-    <limits.h> exists even on freestanding compilers.  */
-#ifdef __STDC__
-# include <limits.h>
-#else
-# include <assert.h>
-#endif
-#undef scandir
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char scandir ();
-/* The GNU C library defines this for functions which it implements
-    to always fail with ENOSYS.  Some functions are actually named
-    something starting with __ and the normal name is an alias.  */
-#if defined __stub_scandir || defined __stub___scandir
-choke me
-#endif
-int main ( ) {
-    return scandir ( );
-    return 0;
-}
-
-                print "yes\n";
-                $self->notes('define')->{'HAVE_SCANDIR'} = 1;
-            }
-            else { print "no\n" }
-        }
-        {
-            last if !defined $self->notes('define')->{'HAVE_SCANDIR'};
-            print 'Checking for a POSIX compatible scandir() prototype... ';
-            if ($self->build_exe({code => <<''})) {
-#include <stdio.h>
-#include <stdlib.h>
-#ifdef __cplusplus
-extern "C"
-#endif
-#include <dirent.h>
-int func (const char *d, dirent ***list, void *sort) {
-    int n = scandir(d, list, 0, (int(*)(const dirent **, const dirent **))sort);
-}
-int main ( ) {
-    return 0;
-}
-
-                print "yes\n";
-                $self->notes('define')->{'HAVE_SCANDIR_POSIX'} = 1;
-            }
-            else { print "no\n" }
-        }
-        {
-            $self->assert_lib({headers=>['pthread.h']});
-            last if !defined $self->notes('define')->{'HAVE_PTHREAD_H'};
-            print 'Testing pthread support... ';
-            if ($self->assert_lib({headers => [qw[pthread.h]]})) {
-                print "okay\n";
-                $self->notes('define')->{'HAVE_PTHREAD'} = 1;
-                last;
-            }
-            print "FAIL!\n";
-        }
-        {
-            print 'Checking for library containing pow... ';
-            my $_have_pow = '';
-        LIB: for my $lib ('', '-lm') {
-                my $exe = $self->build_exe(
-                                  {code => <<'', extra_linker_flags => $lib});
-#include <stdio.h>
-#include <stdlib.h>
-#ifdef __cplusplus
-extern "C"
-#endif
-char pow ();
-int main ( ) {
-    printf ("1");
-    return pow ();
-    return 0;
-}
-
-                if ($exe && `$exe`) {
-                    if   ($lib) { print "$lib\n" }
-                    else        { print "none required\n" }
-                    $self->notes(
-                             'ldflags' => $self->notes('ldflags') . " $lib ");
-                    $_have_pow = 1;
-                    last LIB;
-                }
-            }
-            if (!$_have_pow) {
-                print "FAIL!\n";    # XXX - quit
-            }
-        }
-        {
-            $self->assert_lib({headers=>['string.h']});
-            $self->assert_lib({headers=>['strings.h']});
-            $self->assert_lib({headers=>['sys/select.h']});
-            $self->assert_lib({headers=>['png.h']});
-        }
-        {
-            print "Setting defaults...\n";
-            print "    BORDER_WIDTH = 2\n";
-            $self->notes('define')->{'BORDER_WIDTH'} = 2;
-            print "    USE_COLORMAP = 1\n";
-            $self->notes('define')->{'USE_COLORMAP'} = 1;
-            print "    HAVE_GL_OVERLAY = HAVE_OVERLAY\n";
-            $self->notes('define')->{'HAVE_GL_OVERLAY'} = 'HAVE_OVERLAY';
-
-=todo
-        $self->notes(
-            config => {
-                __APPLE_QUARTZ__       => undef,                       # 1.3.x
-                __APPLE_QD__           => undef,                       # 1.3.x
-                USE_X11_MULTITHREADING => 0,                           # 2.0
-                USE_XFT                => 0,                           # both
-                USE_XCURSOR            => undef,
-                USE_CAIRO              => $self->notes('use_cairo'),   # both
-                USE_CLIPOUT            => 0,
-                USE_XSHM               => 0,
-                HAVE_XDBE              => 0,                           # both
-                USE_XDBE               => 'HAVE_XDBE',                 # both
-                USE_OVERLAY            => 0,
-                USE_XINERAMA           => 0,
-                USE_MULTIMONITOR       => 1,
-                USE_STOCK_BRUSH        => 1,
-                USE_XIM                => 1,
-                HAVE_ICONV             => 0,
-                USE_GL_OVERLAY            => 0,                        # 2.0
-                USE_GLEW                  => 0,                        # 2.0
-                HAVE_GLXGETPROCADDRESSARB => undef,                    # 1.3
-                HAVE_VSNPRINTF   => 1,
-                HAVE_SNPRINTF    => 1,
-                HAVE_STRCASECMP  => undef,
-                HAVE_STRDUP      => undef,
-                HAVE_STRLCAT     => undef,
-                HAVE_STRLCPY     => undef,
-                HAVE_STRNCASECMP => undef,
-                USE_POLL         => 0,                                # both
-                HAVE_LIBPNG      => undef,
-                HAVE_LIBZ        => undef,
-                HAVE_LIBJPEG     => undef,
-                HAVE_LOCAL_PNG_H => undef,
-                HAVE_LIBPNG_PNG_H => undef,
-                HAVE_LOCAL_JPEG_H => undef,
-                HAVE_EXCEPTIONS      => undef,
-                HAVE_DLOPEN          => 0,
-                BOXX_OVERLAY_BUGS    => 0,
-                SGI320_BUG           => 0,
-                CLICK_MOVES_FOCUS    => 0,
-                IGNORE_NUMLOCK       => 1,
-                USE_PROGRESSIVE_DRAW => 1,
-                HAVE_XINERAMA        => 0        # 1.3.x
-            }
-        );
-=cut
-
         }
         return 1;
     }
@@ -1022,9 +693,9 @@ int main ( ) {
             next if $libs->{$lib}{'disabled'};
             print "Building $lib...\n";
             my $cwd = _abs(_cwd());
-            if (!chdir _path($build->fltk_dir(), $libs->{$lib}{'directory'}))
-            {   printf 'Cannot chdir to %s to build %s: %s',
-                    _path($build->fltk_dir(), $libs->{$lib}{'directory'}),
+            if (!chdir $build->fltk_dir($libs->{$lib}{'directory'})) {
+                printf 'Cannot chdir to %s to build %s: %s',
+                    $build->fltk_dir($libs->{$lib}{'directory'}),
                     $lib, $!;
                 exit 0;
             }
@@ -1059,8 +730,13 @@ int main ( ) {
                                         include_dirs => [keys %include_dirs],
                                         extra_compiler_flags =>
                                             join(' ',
-                                                 $Config{'ccflags'}, '-MD',
-                                                 $self->notes('cxxflags')),
+                                                 $Config{'ccflags'},
+                                                 '-MD',
+                                                 (  $src =~ m[\.c$]
+                                                  ? $self->notes('cflags')
+                                                  : $self->notes('cxxflags')
+                                                 )
+                                            ),
                                         output => $obj,
                                        }
                         );
@@ -1103,89 +779,160 @@ int main ( ) {
     # Module::Build actions
     sub ACTION_fetch_fltk {
         my ($self, %args) = @_;
-        $args{'to'} = (
-            defined $args{'to'} ? $args{'to'} : $self->notes('snapshot_dir'));
-        $args{'ext'}    ||= [qw[gz bz2]];
-        $args{'scheme'} ||= [qw[http ftp]];
-        {
-            my ($file) = grep {-f} map {
-                (sprintf '%s/fltk-%s-r%d.tar.%s',
-                 $args{'to'}, $self->notes('branch'),
-                 $self->notes('svn'), $_
-                    )
-            } @{$args{'ext'}};
-            if (defined $file) {
-                $self->notes('snapshot_path' => $file);
-                $self->notes('snapshot_dir'  => $args{'to'});
-                return $self->depends_on('verify_snapshot');
-            }
-        }
-        require File::Fetch;
-        $File::Fetch::TIMEOUT = $File::Fetch::TIMEOUT = 45;    # Be quick
-        printf "Fetching SVN snapshot %d... ", $self->notes('svn');
-        my ($schemes, $exts, %mirrors)
-            = ($args{'scheme'}, $args{'ext'}, _snapshot_mirrors());
-        my ($attempt, $total)
-            = (0, scalar(@$schemes) * scalar(@$exts) * scalar(keys %mirrors));
-        my $mirrors = [keys %mirrors];
-        {                                                      # F-Y shuffle
-            my $i = @$mirrors;
-            while (--$i) {
-                my $j = int rand($i + 1);
-                @$mirrors[$i, $j] = @$mirrors[$j, $i];
-            }
-        }
         my ($dir, $archive, $extention);
-    MIRROR: for my $mirror (@$mirrors) {
-        EXT: for my $ext (@$exts) {
-            SCHEME: for my $scheme (@$schemes) {
-                    printf "\n[%d/%d] Trying %s mirror based in %s... ",
-                        ++$attempt, $total, uc $scheme, $mirror;
-                    my $ff =
-                        File::Fetch->new(
-                              uri => sprintf
-                                  '%s://%s/fltk/snapshots/fltk-%s-r%d.tar.%s',
-                              $scheme, $mirrors{$mirror},
-                              $self->notes('branch'),
-                              $self->notes('svn'), $ext
-                        );
+        $args{'to'} = (defined $args{'to'}
+                       ? $args{'to'}
+                       : $self->notes('snapshot_dir')
+        );
+        unshift @INC, (_path($self->base_dir, 'lib'));
+        if (   (!$args{'no-git'})
+            && (eval 'require ' . $self->module_name)
+            && ($self->module_name->_git_rev()))
+        {   {
+                $args{'ext'} ||= [qw[tar.gz zip]];
+                my ($file) = grep {-f} map {
+                    (sprintf '%s/fltk-%s-r%s.%s',
+                     $args{'to'}, $self->notes('branch'),
+                     $self->notes('svn'), $_
+                        )
+                } @{$args{'ext'}};
+                if (defined $file) {
+                    $self->notes('snapshot_path' => $file);
+                    $self->notes('snapshot_dir'  => $args{'to'});
+                    return 1;    # $self->depends_on('verify_snapshot');
+                }
+            }
+            my @mirrors = map {
+                sprintf '%ssanko-fltk-%s-%s.', $_, $self->notes('branch'),
+                    $self->module_name->_git_rev()
+            } values %{$self->_snapshot_mirrors()};
+            require File::Fetch;
+            $File::Fetch::TIMEOUT = $File::Fetch::TIMEOUT = 45;    # Be quick
+            printf 'Fetching git snapshot %s... ',
+                $self->module_name->_git_rev();
+            my ($exts) = ($args{'ext'});
+            my ($attempt, $total) = (0, scalar(@$exts) * scalar(@mirrors));
+        GIT_MIRROR: for my $mirror (@mirrors) {
+
+                for my $ext (@$exts) {
+                    printf "\n[%d/%d] Trying %s%s... ", ++$attempt, $total,
+                        $mirror, $ext;
+                    my $ff = File::Fetch->new(uri => $mirror . $ext);
                     $archive = $ff->fetch(to => $args{'to'});
                     if ($archive and -f $archive) {
                         $self->notes('snapshot_mirror_uri'      => $ff->uri);
                         $self->notes('snapshot_mirror_location' => $mirror);
-                        $archive = (sprintf '%s/fltk-%s-r%d.tar.%s',
+                        my $_archive = $archive;
+                        $archive = (sprintf '%s/fltk-%s-r%s.%s',
                                     $args{'to'},
                                     $self->notes('branch'),
                                     $self->notes('svn'),
                                     $ext
                         );
+                        rename $_archive, $archive;
                         $extention = $ext;
                         $dir       = $args{'to'};
-                        last MIRROR;
+                        last GIT_MIRROR;
                     }
                 }
+            }
+            {
+                $args{'ext'} ||= [qw[tar.gz zip]];
+                my ($file) = grep {-f} map {
+                    (sprintf '%s/fltk-%s-%s.%s',
+                     $args{'to'}, $self->notes('branch'),
+                     $self->notes('svn'), $_
+                        )
+                } @{$args{'ext'}};
+
+                #return 1 if defined $file;
             }
         }
-        if (!$archive) {    # bad news
-            my (@urls, $i);
-            for my $ext (@$exts) {
-                for my $mirror (sort values %mirrors) {
-                    for my $scheme (@$schemes) {
-                        push @urls,
-                            sprintf
-                            '[%d] %s://%s/fltk/snapshots/fltk-%s-r%d.tar.%s',
-                            ++$i, $scheme, $mirror,
-                            $self->notes('branch'),
-                            $self->notes('svn'), $ext;
+        else {    # SVN
+            $args{'ext'}    ||= [qw[gz bz2]];
+            $args{'scheme'} ||= [qw[http ftp]];
+            {
+                my ($file) = grep {-f} map {
+                    (sprintf '%s/fltk-%s-r%d.tar.%s',
+                     $args{'to'}, $self->notes('branch'),
+                     $self->notes('svn'), $_
+                        )
+                } @{$args{'ext'}};
+                if (defined $file) {
+                    $self->notes('snapshot_path' => $file);
+                    $self->notes('snapshot_dir'  => $args{'to'});
+                    return $self->depends_on('verify_snapshot');
+                }
+            }
+            require File::Fetch;
+            $File::Fetch::TIMEOUT = $File::Fetch::TIMEOUT = 45;    # Be quick
+            printf "Fetching SVN snapshot %d... ", $self->notes('svn');
+            my ($schemes, $exts, %mirrors)
+                = ($args{'scheme'}, $args{'ext'}, $self->_snapshot_mirrors());
+            my ($attempt, $total)
+                = (
+                 0, scalar(@$schemes) * scalar(@$exts) * scalar(keys %mirrors)
+                );
+            my $mirrors = [keys %mirrors];
+            {    # F-Y shuffle
+                my $i = @$mirrors;
+                while (--$i) {
+                    my $j = int rand($i + 1);
+                    @$mirrors[$i, $j] = @$mirrors[$j, $i];
+                }
+            }
+        SVN_MIRROR: for my $mirror (@$mirrors) {
+            EXT: for my $ext (@$exts) {
+                SCHEME: for my $scheme (@$schemes) {
+                        printf "\n[%d/%d] Trying %s mirror based in %s... ",
+                            ++$attempt, $total, uc $scheme, $mirror;
+                        my $ff =
+                            File::Fetch->new(
+                              uri => sprintf
+                                  '%s://%s/fltk/snapshots/fltk-%s-r%d.tar.%s',
+                              $scheme, $mirrors{$mirror},
+                              $self->notes('branch'),
+                              $self->notes('svn'), $ext
+                            );
+                        $archive = $ff->fetch(to => $args{'to'});
+                        if ($archive and -f $archive) {
+                            $self->notes('snapshot_mirror_uri' => $ff->uri);
+                            $self->notes(
+                                       'snapshot_mirror_location' => $mirror);
+                            $archive = (sprintf '%s/fltk-%s-r%d.tar.%s',
+                                        $args{'to'},
+                                        $self->notes('branch'),
+                                        $self->notes('svn'),
+                                        $ext
+                            );
+                            $extention = $ext;
+                            $dir       = $args{'to'};
+                            last SVN_MIRROR;
+                        }
                     }
                 }
             }
-            my $urls = join "\n", @urls;
-            $self->_error(
-                {stage => 'fltk source download',
-                 fatal => 1,
-                 message =>
-                     sprintf <<'END', ($self->notes('snapshot_dir')), $urls});
+            if (!$archive) {    # bad news
+                my (@urls, $i);
+                for my $ext (@$exts) {
+                    for my $mirror (sort values %mirrors) {
+                        for my $scheme (@$schemes) {
+                            push @urls,
+                                sprintf
+                                '[%d] %s://%s/fltk/snapshots/fltk-%s-r%d.tar.%s',
+                                ++$i, $scheme, $mirror,
+                                $self->notes('branch'),
+                                $self->notes('svn'), $ext;
+                        }
+                    }
+                }
+                my $urls = join "\n", @urls;
+                $self->_error(
+                        {stage => 'fltk source download',
+                         fatal => 1,
+                         message =>
+                             sprintf
+                             <<'END', ($self->notes('snapshot_dir')), $urls});
 Okay, we just failed at life.
 
 If you want, you may manually download a snapshot and place it in
@@ -1196,23 +943,34 @@ Please, use one of the following mirrors:
 
 Exiting...
 END
+            }
+            $self->depends_on('verify_snapshot');
         }
+        shift @INC;
         print "done.\n";
         $self->notes('snapshot_dir'  => $args{'to'});
         $self->notes('snapshot_path' => $archive);
         $self->notes('snapshot_dir'  => $dir);       # Unused but good to know
              #$self->add_to_cleanup($dir);
-        return $self->depends_on('verify_snapshot');
     }
 
     sub _snapshot_mirrors {
-        return (
+        my $self = shift;
+        unshift @INC, (_path($self->base_dir, 'lib'));
+        my $return;
+        $return
+            = eval 'require '
+            . $self->module_name
+            ? $self->module_name->_snapshot_mirrors()
+            : {
             'California, USA' => 'ftp.easysw.com/pub',
             'New Jersey, USA' => 'ftp2.easysw.com/pub',
             'Espoo, Finland' => 'ftp.funet.fi/pub/mirrors/ftp.easysw.com/pub',
             'Braunschweig, Germany' =>
                 'ftp.rz.tu-bs.de/pub/mirror/ftp.easysw.com/ftp/pub'
-        );
+            };
+        shift @INC;
+        return $return if $return;
     }
 
     sub ACTION_verify_snapshot {
@@ -1269,56 +1027,23 @@ END
 
     sub ACTION_extract_fltk {
         my ($self, %args) = @_;
+        local @INC = ('lib', @INC);
+        unshift @INC, (_path($self->base_dir, 'lib'));
+        eval 'require ' . $self->module_name;
+        my $key = $self->module_name->_git_rev() ? 'sanko-' : '';
         $self->depends_on('fetch_fltk');
         $args{'from'} ||= $self->notes('snapshot_path');
         $args{'to'}   ||= _rel(($self->notes('extract_dir')));
-        unshift @INC, (_path($self->base_dir, 'lib'));
-        eval 'require ' . $self->module_name;
-        my $unique_file = $self->module_name->_unique_file;
-        if (-f ($args{'to'} . sprintf '/fltk-%s-r%d/%s',
-                $self->notes('branch'),
-                $self->notes('svn'),
-                $unique_file
+        if (!( defined($self->notes('fltk_dir'))
+               && -d $args{'to'} . sprintf '/%sfltk-%s-%s',
+               $key,
+               $self->notes('branch'),
+               $key
+               ? $self->module_name->_git_rev()
+               : 'r' . $self->notes('svn')
             )
-            && !$self->notes('timestamp_extracted')
             )
-        {   warn sprintf
-                "Odd... Found extracted snapshot at %s... (unique file %s located)\n",
-                _rel($args{'to'} . sprintf '/fltk-%s-r%d',
-                     $self->notes('branch'),
-                     $self->notes('svn')),
-                _rel($args{'to'} . sprintf '/fltk-%s-r%d/%s',
-                     $self->notes('branch'),
-                     $self->notes('svn'), $unique_file);
-            $self->notes(timestamp_extracted => time);
-            $self->notes('extract'           => $args{'to'});
-            $self->notes('snapshot_path'     => $args{'from'});
-            return 1;
-        }
-        elsif (-d ($args{'to'} . sprintf '/fltk-%s-r%d',
-                   $self->notes('branch'),
-                   $self->notes('svn')
-               )
-               && !$self->notes('timestamp_extracted')
-            )
-        {   $self->notes('extract' => $args{'to'});
-            warn sprintf
-                "Strage... found partially extracted snapshot at %s...\n",
-                _rel($args{'to'} . sprintf '/fltk-%s-r%d',
-                     $self->notes('branch'),
-                     $self->notes('svn'));
-            require File::Path;
-            print 'Removing existing directory... ', $args{'to'};
-            File::Path::remove_tree(($args{'to'} . sprintf '/fltk-%s-r%d',
-                                     $self->notes('branch'),
-                                     $self->notes('svn')
-                                    )
-            );
-            $self->notes('timestamp_extracted' => undef);
-            print "done\n";
-        }
-        if (!$self->notes('timestamp_extracted')) {
-            printf 'Extracting snapshot from %s to %s... ',
+        {   printf 'Extracting snapshot from %s to %s... ',
                 _rel($args{'from'}),
                 _rel($args{'to'});
             require Archive::Extract;
@@ -1331,9 +1056,17 @@ END
                 );
             }
             $self->add_to_cleanup($ae->extract_path);
-            $self->notes(timestamp_extracted => time);
-            $self->notes('extract'           => $args{'to'});
-            $self->notes('snapshot_path'     => $args{'from'});
+            $self->notes('timestamp_extracted' => time);
+            $self->notes('extract'             => $args{'to'});
+            $self->notes('snapshot_path'       => $args{'from'});
+            $self->notes(
+                     'fltk_dir' => _abs $args{'to'} . sprintf '/%sfltk-%s-%s',
+                     $key,
+                     $self->notes('branch'),
+                     $key
+                     ? $self->module_name->_git_rev()
+                     : 'r' . $self->notes('svn')
+            );
             print "done.\n";
         }
         return 1;

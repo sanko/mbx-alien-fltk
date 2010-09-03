@@ -19,8 +19,9 @@ package inc::MBX::Alien::FLTK::Platform::Windows::CygWin;
             $self->SUPER::configure(qw[no_base]);
 
             # XXX - Requires X11 support from Platform::Unix
-            $self->notes(ldflags  => $self->notes('ldflags') . ' -D_WIN32');
-            $self->notes(cxxflags => $self->notes('cxxflags') . ' -D_WIN32');
+            for my $type (qw[ldflags cxxflags cflags]) {
+                $self->notes($type => $self->notes($type) . ' -D_WIN32 ');
+            }
             return 1;
         }
 
@@ -31,8 +32,9 @@ package inc::MBX::Alien::FLTK::Platform::Windows::CygWin;
         $self->notes('define')->{'_WIN32'}       = 1;
         $self->notes('define')->{'USE_X11'}      = 0;
         $self->notes('define')->{'HAVE_SCANDIR'} = 1;
-        $self->notes(ldflags  => $self->notes('ldflags') . ' -D_WIN32');
-        $self->notes(cxxflags => $self->notes('cxxflags') . ' -D_WIN32');
+        for my $type (qw[ldflags cxxflags cflags]) {
+            $self->notes($type => $self->notes($type) . ' -D_WIN32 ');
+        }
         return 1;
     }
     1;

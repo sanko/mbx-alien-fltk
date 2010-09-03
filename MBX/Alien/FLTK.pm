@@ -13,6 +13,8 @@ package inc::MBX::Alien::FLTK;
         shift;
         my $OS = $args{'osname'} || $Config{'osname'} || $^O;
         my $CC = $args{'cc'}     || $Config{'ccname'} || $Config{'cc'};
+
+#$CC = 'cl'; #################################################################################
         my @platform = grep defined, $OS =~ m[Win32]
             ? (
             'Windows',

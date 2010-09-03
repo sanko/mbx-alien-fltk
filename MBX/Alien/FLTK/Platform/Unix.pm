@@ -13,18 +13,19 @@ package inc::MBX::Alien::FLTK::Platform::Unix;
     sub configure {
         my ($self, @args) = @_;
         $self->quiet(1);
-        $self->SUPER::configure()
+        $self->SUPER::configure(@args)
             if !grep {m[no_base]} @args;    # Get basic config data
+        $self->notes(uname => `uname`);
         $self->notes(
             os_ver => ${
                 my $x = `uname -r`;
                     $x =~ s|\D||g;
                     \$x
-                }
+                },
         );
 
         # Asssumed true since this is *nix
-        $self->notes('define')->{'USE_X11'} = !grep {m[^no_x11$]} @args;
+        $self->notes('define')->{'USE_X11'} = 0;    # default
         $self->notes('define')->{'HAVE_SYS_NDIR_H'}
             = ($self->assert_lib({headers => ['sys/ndir.h']}) ? 1 : undef);
         $self->notes('define')->{'HAVE_SYS_DIR_H'}

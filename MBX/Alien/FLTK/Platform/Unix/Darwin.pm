@@ -4,7 +4,7 @@ package inc::MBX::Alien::FLTK::Platform::Unix::Darwin;
     use warnings;
     use Carp qw[];
     use Config qw[%Config];
-    use lib '../../../../../../';
+    use lib '../../../../../..';
     use inc::MBX::Alien::FLTK::Utility qw[_o _a _rel _abs can_run];
     use inc::MBX::Alien::FLTK;
     use base 'inc::MBX::Alien::FLTK::Platform::Unix';
@@ -18,12 +18,16 @@ package inc::MBX::Alien::FLTK::Platform::Unix::Darwin;
                 ' -framework Carbon -framework Cocoa -framework ApplicationServices '
                 . $self->notes('ldflags')
         );
-        $self->notes(    # We know that Carbon is deprecated on OS X 10.4. To
-             # avoid hundreds of warnings we will temporarily disable 'deprecated'
-             # warnings on OS X.
-            cxxflags => ' -Wno-deprecated-declarations '
-                . $self->notes('cxxflags')
-        ) if $self->notes('os_ver') >= 800;
+        if ($self->notes('os_ver') >= 800) {
+
+            # We know that Carbon is deprecated on OS X 10.4. To avoid
+            # hundreds of warnings we will temporarily disable 'deprecated'
+            # warnings on OS X.
+            for my $type (qw[cxxflags cflags]) {
+                $self->notes(  $type => ' -Wno-deprecated-declarations '
+                             . $self->notes($type));
+            }
+        }
 
         # Starting with 10.6 (Snow Leopard), OS X does not support Carbon
         # calls anymore. We patch this until we are completely Cocoa compliant
@@ -32,11 +36,14 @@ package inc::MBX::Alien::FLTK::Platform::Unix::Darwin;
         my ($ver, $rev) = ($ver_rev =~ m[^(\d+)\.(\d+)$]);
         if (($ver > 10) || (($ver == 10) && $rev >= 5)) {
             $self->notes(ldflags => $self->notes('ldflags') . ' -arch i386 ');
+            $self->notes(cflags  => $self->notes('cflags') . ' -arch i386 ');
             $self->notes(
                        cxxflags => $self->notes('cxxflags') . ' -arch i386 ');
         }
         $self->notes(GL => ' -framework AGL -framework OpenGL ');
+        $self->notes('define')->{'USE_X11'}          = 0;
         $self->notes('define')->{'USE_QUARTZ'}       = 1;    # Alpha
+        $self->notes('define')->{'__APPLE__'}        = 1;    # Alpha
         $self->notes('define')->{'__APPLE_QUARTZ__'} = 1;    # Alpha
         $self->notes('define')->{'__APPLE_COCOA__'}  = 1;    # Alpha
         return 1;

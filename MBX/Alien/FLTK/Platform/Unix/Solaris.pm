@@ -13,7 +13,10 @@ package inc::MBX::Alien::FLTK::Platform::Unix::Solaris;
     sub configure {
         my ($self) = @_;
         $self->SUPER::configure() || return 0;    # Get basic config data
-        $self->notes('define')->{'HAVE_SCANDIR'} = undef;
+
+        # cpantesters.org/cpan/report/07134937-b19f-3f77-b713-d32bba55d77f
+        $self->notes('define')->{'HAVE_SCANDIR'}    # STR #1890
+            = $self->notes('os_ver') =~ '510' ? 1 : 0;    # 5.10 has scandir
         return 1;
     }
     1;
