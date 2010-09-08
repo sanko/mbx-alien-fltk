@@ -40,9 +40,10 @@ package inc::MBX::Alien::FLTK::Platform::Windows;
                               }
                 );
                 last GL;
+                $self->notes(GL => '');
                 for my $lib (keys %{$self->notes('libs_source')}) {
                     $self->notes('libs_source')->{$lib}{'disabled'}++
-                        if $lib =~ m[gl$]i;
+                        if $lib =~ m[gl]i;
                 }
             }
             print "okay\n";
@@ -57,10 +58,11 @@ package inc::MBX::Alien::FLTK::Platform::Windows;
                                message => 'OpenGLU32 libs were not found'
                               }
                 );
+                $self->notes(GL => '');
                 last GL;
                 for my $lib (keys %{$self->notes('libs_source')}) {
                     $self->notes('libs_source')->{$lib}{'disabled'}++
-                        if $lib =~ m[gl$]i;
+                        if $lib =~ m[gl]i;
                 }
             }
             else {

@@ -174,7 +174,7 @@ package. If I'm just missing something... patches welcome.
             }
         }
     GL: {
-            last if grep {m[^no_gl$]} @args;
+            last GL if grep {m[^no_gl$]} @args;
             print 'Checking for GL... ';
             my $GL_LIB = '';
             $self->notes('define')->{'HAVE_GL'} = 0;
@@ -212,10 +212,10 @@ package. If I'm just missing something... patches welcome.
                 }
                 else { print "no\n" }
             }
-            $self->notes(GL => $GL_LIB);
+            $self->notes(GL => '');
             for my $lib (keys %{$self->notes('libs_source')}) {
                 $self->notes('libs_source')->{$lib}{'disabled'}++
-                    if $lib =~ m[gl$]i;
+                    if $lib =~ m[gl]i;
             }
         }
         print "have pthread... yes (assumed)\n";
