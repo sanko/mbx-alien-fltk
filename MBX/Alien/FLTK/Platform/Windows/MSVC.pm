@@ -73,7 +73,6 @@ package inc::MBX::Alien::FLTK::Platform::Windows::MSVC;
                     next;
                 };
                 if ($data =~ s[^(#\s*warning .+)$][//$1]mg) {
-                    warn $src;
                     printf
                         'Removing incompatible #warning pragmas from %s... ',
                         $src;
