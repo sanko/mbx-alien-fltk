@@ -1320,6 +1320,12 @@ END
             printf 'Looking for %s... ', $file;
             $dir = join ' ', ($dir || ''), $Config{'incpath'},
                 $Config{'usrinc'};
+            {
+                # work around bug in recent Strawberry perl
+                my @pth = split ' ', $Config{'libpth'}                ;
+                s[lib$][include] for @pth;
+                $dir .= join ' ', @pth;
+            }
             $dir =~ s|\s+| |g;
             for my $test (split m[\s+]m, $dir) {
                 if (-e _path($test . '/' . $file)) {
