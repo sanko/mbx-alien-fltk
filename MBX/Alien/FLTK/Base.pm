@@ -41,7 +41,6 @@ package inc::MBX::Alien::FLTK::Base;
         local $^W = 0;
         my $cbuilder = $self->cbuilder;
         local $cbuilder->{'quiet'} = 1;
-        local $cbuilder->{'config'}{'archlibexp'} = '---break---';
         if (!$args->{'source'}) {
             (my $FH, $args->{'source'}) = tempfile(
                                      undef, SUFFIX => '.cpp'    #, UNLINK => 1
@@ -684,6 +683,7 @@ int main () {
         my ($self, $build) = @_;
         $self->quiet(1);
         $self->notes('libs' => []);
+        local $self->cbuilder->{'config'}{'archlibexp'} = '---break---';
         if (!chdir $self->base_dir()) {
             print 'Failed to cd to base directory';
             exit 0;
@@ -1321,8 +1321,9 @@ END
             $dir = join ' ', ($dir || ''), $Config{'incpath'},
                 $Config{'usrinc'};
             {
+
                 # work around bug in recent Strawberry perl
-                my @pth = split ' ', $Config{'libpth'}                ;
+                my @pth = split ' ', $Config{'libpth'};
                 s[lib$][include] for @pth;
                 $dir .= join ' ', @pth;
             }
