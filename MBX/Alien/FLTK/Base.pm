@@ -689,8 +689,11 @@ int main () {
             exit 0;
         }
         my $libs = $self->notes('libs_source');
-        for my $lib (sort { lc $a cmp lc $b } keys %$libs) {
-            next if $libs->{$lib}{'disabled'};
+        my @libs = sort { lc $a cmp lc $b }
+            grep { !$libs->{$_}{'disabled'} } keys %$libs;
+
+        #printf "The following libs will be built: %s\n", join ', ', @libs;
+        for my $lib (@libs) {
             print "Building $lib...\n";
             my $cwd = _abs(_cwd());
             if (!chdir $build->fltk_dir($libs->{$lib}{'directory'})) {
@@ -1320,9 +1323,7 @@ END
             printf 'Looking for %s... ', $file;
             $dir = join ' ', ($dir || ''), $Config{'incpath'},
                 $Config{'usrinc'};
-            {
-
-                # work around bug in recent Strawberry perl
+            {    # work around bug in recent Strawberry perl
                 my @pth = split ' ', $Config{'libpth'};
                 s[lib$][include] for @pth;
                 $dir .= join ' ', @pth;
