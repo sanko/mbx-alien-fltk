@@ -19,6 +19,24 @@ package inc::MBX::Alien::FLTK::Platform::Unix::Solaris;
             = $self->notes('os_ver') =~ '510' ? 1 : 0;    # 5.10 has scandir
         return 1;
     }
+
+    sub _configure_ar {
+        my $s = shift;
+        print 'Locating library archiver... ';
+        open(my ($OLDOUT), ">&STDOUT");
+        close *STDOUT;
+        my ($ar) = grep { defined $_ } can_run($Config{'gar'}),
+            can_run($Config{'ar'});
+        open(*STDOUT, '>&', $OLDOUT)
+            || exit !print "Couldn't restore STDOUT: $!\n";
+        if (!$ar) {
+            print "Could not find the library archiver, aborting.\n";
+            exit 0;
+        }
+        $ar .= ' -r -c' . (can_run($Config{'ranlib'}) ? ' -s' : '');
+        $s->notes(AR => $ar);
+        print "$ar\n";
+    }
     1;
 }
 

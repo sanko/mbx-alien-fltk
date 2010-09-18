@@ -38,9 +38,10 @@ package inc::MBX::Alien::FLTK::Base;
 
     sub compile {
         my ($self, $args) = @_;
-        local $^W = 0;
         my $cbuilder = $self->cbuilder;
-        local $cbuilder->{'quiet'} = 1;
+
+        #local $^W = 0;
+        #local $cbuilder->{'quiet'} = 1;
         if (!$args->{'source'}) {
             (my $FH, $args->{'source'}) = tempfile(
                                      undef, SUFFIX => '.cpp'    #, UNLINK => 1
@@ -56,7 +57,7 @@ package inc::MBX::Alien::FLTK::Base;
             $self->add_to_cleanup($args->{'source'});
         }
         open(my ($OLDERR), ">&STDERR");
-        close *STDERR;
+        close *STDERR if $cbuilder->{'quiet'};
         my $obj = eval {
             $cbuilder->compile(
                   ($args->{'source'} !~ m[\.c$] ? ('C++' => 1) : ()),
@@ -171,19 +172,9 @@ package inc::MBX::Alien::FLTK::Base;
                 : ' -lfltk2_images '
             )
         );
-        $self->notes('include_dirs'  => {});
-        $self->notes('library_paths' => {});
-        {
-            print 'Locating library archiver... ';
-            my $ar = can_run('ar');
-            if (!$ar) {
-                print "Could not find the library archiver, aborting.\n";
-                exit 0;
-            }
-            $ar .= ' cr' . (can_run('ranlib') ? 's' : '');
-            $self->notes(AR => $ar);
-            print "$ar\n";
-        }
+        $self->notes('include_dirs' => {});
+        $self->notes('lib_dirs'     => {});
+        $self->_configure_ar;
         {
             my %sizeof;
             for my $type (qw[short int long]) {
@@ -679,6 +670,23 @@ int main () {
         return 1;
     }
 
+    sub _configure_ar {
+        my $s = shift;
+        print 'Locating library archiver... ';
+        open(my ($OLDOUT), ">&STDOUT");
+        close *STDOUT;
+        my ($ar) = grep { run("$_ V") } can_run($Config{'ar'});
+        open(*STDOUT, '>&', $OLDOUT)
+            || exit !print "Couldn't restore STDOUT: $!\n";
+        if (!$ar) {
+            print "Could not find the library archiver, aborting.\n";
+            exit 0;
+        }
+        $ar .= ' cr' . (can_run($Config{'ranlib'}) ? 's' : '');
+        $s->notes(AR => $ar);
+        print "$ar\n";
+    }
+
     sub build_fltk {
         my ($self, $build) = @_;
         $self->quiet(1);
@@ -1079,7 +1087,6 @@ END
 
     sub ACTION_configure {
         my ($self) = @_;
-        $self->depends_on('extract_fltk');
         if (!$self->notes('timestamp_configure')
 
             #   || !$self->notes('define')
@@ -1099,6 +1106,7 @@ END
         #    if -f $self->notes('config_yml')
         #        && -s $self->notes('config_yml');
         $self->depends_on('configure');
+        $self->depends_on('extract_fltk');
         if (!chdir $self->fltk_dir()) {
             print 'Failed to cd to '
                 . $self->fltk_dir()
@@ -1268,10 +1276,17 @@ END
             # first figure out which headers we can' t find...
             for my $header (@{$args->{'headers'}}) {
                 printf 'Trying to compile with %s... ', $header;
+                push @{$args->{'include_dirs'}}, $self->find_h($header);
                 if ($self->compile(
                             {code => "#include <$header>\n" . $args->{'code'},
-                             include_dirs => $args->{'include_dirs'},
-                             lib_dirs     => $args->{'lib_dirs'}
+                             include_dirs => [
+                                          $args->{'include_dirs'},
+                                          $self->find_h($header),
+                                          keys %{$self->notes('include_dirs')}
+                             ],
+                             lib_dirs => [$args->{'lib_dirs'},
+                                          keys %{$self->notes('lib_dirs')}
+                             ]
                             }
                     )
                     )
@@ -1290,8 +1305,14 @@ END
                                 join("\n",
                                 (map {"#include <$_>"} @{$args->{'headers'}}),
                                 $args->{'code'}),
-                            include_dirs       => $args->{'include_dirs'},
-                            lib_dirs           => $args->{'lib_dirs'},
+                            include_dirs => [
+                                          $args->{'include_dirs'},
+                                          keys %{$self->notes('include_dirs')}
+                            ],
+                            lib_dirs => [$args->{'lib_dirs'},
+                                         keys %{$self->notes('lib_dirs')},
+                                         $self->find_lib($lib)
+                            ],
                             extra_linker_flags => "-l$lib"
                            }
                     )
@@ -1316,8 +1337,13 @@ END
                 = File::Find::Rule->file()
                 ->name('lib' . $find . $Config{'_a'})->maxdepth(1)
                 ->in(split ' ', $dir);
-            printf "%s\n", @files ? 'found ' . (_dir($files[0])) : 'missing';
-            return _path((_dir($files[0])));
+            if (@files) {
+                printf "found in %s\n", _dir($files[0]);
+                $self->notes('lib_dirs')->{_path((_dir($files[0])))}++;
+                return _path((_dir($files[0])));
+            }
+            print "missing\n";
+            return ();
         }
 
         sub find_h {

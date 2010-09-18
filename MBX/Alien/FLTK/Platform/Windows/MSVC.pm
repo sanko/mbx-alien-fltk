@@ -35,8 +35,8 @@ package inc::MBX::Alien::FLTK::Platform::Windows::MSVC;
                                        : ' -lfltk2_images '
                      )
         );
-        $self->notes('include_dirs'  => {});
-        $self->notes('library_paths' => {});
+        $self->notes('include_dirs' => {});
+        $self->notes('lib_dirs'     => {});
 
         # Not all of FLTK is compatible/applicable with MSVC...
         my @remove = qw[WidgetAssociation.cxx];

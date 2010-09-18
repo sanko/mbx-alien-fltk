@@ -45,10 +45,12 @@ package inc::MBX::Alien::FLTK;
             unshift @ISA, $platform;
         }
         my $self = $class->SUPER::new(@_);
-        $self->notes(platform => \@platform);
-        $self->notes(os       => $OS);
-        $self->notes(cc       => $CC);
-        $self->notes(errors   => []);
+        $self->notes(platform       => \@platform);
+        $self->notes(os             => $OS);
+        $self->notes(cc             => $CC);
+        $self->notes(errors         => []);
+        $self->notes('include_dirs' => {});
+        $self->notes('lib_dirs'     => {});
         return $self;
     }
 

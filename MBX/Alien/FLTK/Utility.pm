@@ -21,11 +21,13 @@ package inc::MBX::Alien::FLTK::Utility;
             return $prog if scalar $syms->getsym(uc $prog);
         }
         require ExtUtils::MM;
+        my @possible;
         for my $dir ((split /\Q$Config{path_sep}\E/, $ENV{PATH}),
                      File::Spec->curdir)
         {   my $abs = File::Spec->catfile($dir, $prog);
-            return $abs if $abs = MM->maybe_command($abs);
+            push @possible, $abs if $abs = MM->maybe_command($abs);
         }
+        return wantarray ? @possible : $possible[0];
     }
     sub run { return !system(join ' ', @_); }
 
