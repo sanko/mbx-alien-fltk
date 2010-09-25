@@ -540,9 +540,9 @@ int main ( ) {
 }
 
                 my $define = uc 'HAVE_' . $header;
+                $define =~ s|[/\.]|_|g;
                 if ($exe) {
                     print "    yes ($header)\n";
-                    $define =~ s|[/\.]|_|g;
                     $self->notes('define')->{$define} = 1;
 
                     #$self->notes('cache')->{'header_dirent'} = $header;
