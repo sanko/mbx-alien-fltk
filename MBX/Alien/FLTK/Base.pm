@@ -56,13 +56,8 @@ package inc::MBX::Alien::FLTK::Base;
             close $FH;
             $self->add_to_cleanup($args->{'source'});
         }
-        my ($OLDERR, $ERR) = (undef, '');
-        if ($cbuilder->{'quiet'}) {
-            open $OLDERR, ">&", \*STDERR or die "Can't dup STDERR: $!";
-            select STDERR;
-            $| = 1;
-            select STDOUT;
-        }
+        open(my ($OLDERR), ">&STDERR");
+        close *STDERR if $cbuilder->{'quiet'};
         my $obj = eval {
             $cbuilder->compile(
                   ($args->{'source'} !~ m[\.c$] ? ('C++' => 1) : ()),
@@ -77,11 +72,8 @@ package inc::MBX::Alien::FLTK::Base;
                   )
             );
         };
-        if ($cbuilder->{'quiet'}) {
-            open STDERR, ">&" . $OLDERR
-                || exit !print "Couldn't restore STDERR: $!\n";
-            print $ERR if !$obj && $cbuilder->{'quiet'} == 2;
-        }
+        open(*STDERR, '>&', $OLDERR)
+            || exit !print "Couldn't restore STDERR: $!\n";
         return $obj ? $obj : ();
     }
 
@@ -699,7 +691,6 @@ int main () {
         my ($self, $build) = @_;
         $self->quiet(1);
         $self->notes('libs' => []);
-        local $self->cbuilder->{'quiet'} = 2;    # Extra quiet
         local $self->cbuilder->{'config'}{'archlibexp'} = '---break---';
         if (!chdir $self->base_dir()) {
             print 'Failed to cd to base directory';
