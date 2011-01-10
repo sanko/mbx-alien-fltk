@@ -1073,6 +1073,7 @@ END
             $self->notes('timestamp_extracted' => time);
             $self->notes('extract'             => $args{'to'});
             $self->notes('snapshot_path'       => $args{'from'});
+            $self->notes('fltk_patched'        => 0);
             $self->notes(
                      'fltk_dir' => _abs $args{'to'} . sprintf '/%sfltk-%s-%s',
                      $key,
@@ -1391,7 +1392,9 @@ END
 
     # Patch system
     sub ACTION_patch_fltk {
-        my $s   = shift;
+        my $s = shift;
+        return if $s->notes('fltk_patched');
+        $s->notes('fltk_patched', gmtime());
         my $cwd = _abs(_cwd());
         if (!chdir $s->base_dir()) {
             print 'Failed to cd to base directory';
@@ -1403,14 +1406,18 @@ END
         for my $patch (@patches) {
             printf 'Applying %s... ', _rel($patch);
             printf ucfirst "%sokay\n",
-                _patch_dir($s->notes('extract'), _parse_diff($patch))
+                $s->_patch_dir($s->notes('extract'), $s->_parse_diff($patch))
                 ? ''
                 : 'not ';
         }
     }
 
     sub _parse_diff {    # Takes unified diff and returns list of changes
-        my ($diff) = @_;
+        my ($s, $diff) = @_;
+        if (!chdir $s->base_dir()) {
+            print 'Failed to cd to base directory';
+            exit 0;
+        }
         $diff = sub {
             open my $FH, '<', shift || return;
             sysread $FH, my $DAT, -s $FH;
@@ -1423,7 +1430,7 @@ END
         #
         my (%patch, $hunk, $from_file, $to_file, $from_time, $to_time);
         while (my $line = shift @diff) {
-            if ($line =~ m[^\@\@\s*-([\d+,]+)\s+\+([\d+,]+)\s*\@\@$])
+            if ($line =~ m[^\@\@\s+-([\d+,?]+)\s+\+([\d+,?]+)\s+\@\@\s*$])
             {    # Unified
                 if ($hunk) {
                     push @{$patch{$to_file}{hunks}}, $hunk;
@@ -1433,10 +1440,10 @@ END
                 ($hunk->{to_pos},   $hunk->{to_len})   = split ',', $2;
                 $hunk->{$_}-- for qw[from_pos to_pos];
             }
-            elsif ($line =~ m[^---\s+([^\s]+)\s+(.+)$]) {
+            elsif ($line =~ m[^---\s+([^\t]+)\t(.+)$]) {
                 ($from_file, $from_time) = ($1, $2);
             }
-            elsif ($line =~ m[^\+\+\+\s+([^\s]+)\s+(.+)$]) {
+            elsif ($line =~ m[^\+\+\+\s+([^\t]+)\t(.+)$]) {
                 ($to_file, $to_time) = ($1, $2);
             }
             else {
@@ -1454,30 +1461,39 @@ END
     }
 
     sub _patch_dir {
-        my ($dir, $patches) = @_;
+        my ($s, $dir, $patches) = @_;
+        if (!chdir $s->base_dir()) {
+            print 'Failed to cd to base directory';
+            exit 0;
+        }
         my $tally;
         require File::Spec;
         for my $file (keys %$patches) {
             my $abs = File::Spec->catfile($dir, $file);
             my $orig = sub {
-                open my $FH, '<', shift || return;
-                sysread $FH, my $DAT, -s $FH;
+                open my $FH, '<', _abs(shift) || return '';
+                sysread($FH, my $DAT, -s $FH) == -s $FH
+                    || die 'Failed to slurp ' . _abs($abs) . ' | ' . $!;
                 $DAT;
                 }
-                ->($abs) || die 'Failed to slurp ' . $abs;
+                ->($abs);
             my @orig = split /^/m, $orig;
-            my $data = _patch_data(\@orig, $patches->{$file}{'hunks'});
+            my @data = $s->_patch_data(\@orig, $patches->{$file}{'hunks'});
             $tally += sub {
                 open my $FH, '>', shift || return;
                 syswrite $FH, shift;
                 }
-                ->($abs, $data);
+                ->($abs, join '', @data) if @data;
         }
         return $tally;
     }
 
     sub _patch_data {
-        my ($text, $hunks) = @_;
+        my ($s, $text, $hunks) = @_;
+        if (!chdir $s->base_dir()) {
+            print 'Failed to cd to base directory';
+            exit 0;
+        }
         for my $hunk (reverse @$hunks) {
             my @pdata;
             my $num = $hunk->{from_pos};
@@ -1500,7 +1516,7 @@ END
             }
             splice @$text, $hunk->{from_pos}, $hunk->{from_len}, @pdata;
         }
-        return join '', @$text;
+        return @$text;
     }
 
     sub fltk_patches {
