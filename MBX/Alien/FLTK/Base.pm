@@ -57,7 +57,8 @@ package inc::MBX::Alien::FLTK::Base;
             $self->add_to_cleanup($args->{'source'});
         }
         open(my ($OLDERR), ">&STDERR");
-        close *STDERR if $cbuilder->{'quiet'};
+
+        #close *STDERR if $cbuilder->{'quiet'};
         my $obj = eval {
             $cbuilder->compile(
                   ($args->{'source'} !~ m[\.c$] ? ('C++' => 1) : ()),
