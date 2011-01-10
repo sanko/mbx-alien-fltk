@@ -9,8 +9,8 @@ package inc::MBX::Alien::FLTK::Base;
     use Carp qw[carp];
     use base 'Module::Build';
     use lib '../../../../';
-    use inc::MBX::Alien::FLTK::Utility
-        qw[_o _a _path _realpath _dir _file _rel _abs _exe _cwd can_run run];
+    use inc::MBX::Alien::FLTK::Utility qw[can_run run _o _a _exe _dll _path
+        _realpath _abs _rel _dir _file _split _cwd];
     use lib '.';
 
     sub fltk_dir {
@@ -1216,6 +1216,7 @@ END
         my ($self) = @_;
         $self->depends_on('write_config_h');
         $self->depends_on('write_config_yml');
+        $self->depends_on('patch_fltk');
         my @lib = $self->build_fltk($self);
         if (!chdir $self->base_dir()) {
             printf 'Failed to return to %s to copy libs', $self->base_dir();
@@ -1385,6 +1386,139 @@ END
             print "missing\n";
             return ();
         }
+    }
+
+    # Patch system
+    sub ACTION_patch_fltk {
+        my $s   = shift;
+        my $cwd = _abs(_cwd());
+        if (!chdir $s->base_dir()) {
+            print 'Failed to cd to base directory';
+            exit 0;
+        }
+        my @patches = $s->fltk_patches;
+        printf "Patching FLTK... (expect %d patch%s)\n", scalar(@patches),
+            (@patches == 1 ? '' : 'es');
+        for my $patch (@patches) {
+            printf 'Applying %s... ', _rel($patch);
+            printf ucfirst "%sokay\n",
+                _patch_dir($s->notes('extract'), _parse_diff($patch))
+                ? ''
+                : 'not ';
+        }
+    }
+
+    sub _parse_diff {    # Takes unified diff and returns list of changes
+        my ($diff) = @_;
+        $diff = sub {
+            open my $FH, '<', shift || return;
+            sysread $FH, my $DAT, -s $FH;
+            $DAT;
+            }
+            ->($diff) || $diff if $diff !~ m[\r?\n] && -f $diff;
+        my @diff = split /^/m, $diff;
+        my $eol = $diff[-1] =~ m[(\r?\n)$];
+
+        #
+        my (%patch, $hunk, $from_file, $to_file, $from_time, $to_time);
+        while (my $line = shift @diff) {
+            if ($line =~ m[^\@\@\s*-([\d+,]+)\s+\+([\d+,]+)\s*\@\@$])
+            {    # Unified
+                if ($hunk) {
+                    push @{$patch{$to_file}{hunks}}, $hunk;
+                    $hunk = ();
+                }
+                ($hunk->{from_pos}, $hunk->{from_len}) = split ',', $1;
+                ($hunk->{to_pos},   $hunk->{to_len})   = split ',', $2;
+                $hunk->{$_}-- for qw[from_pos to_pos];
+            }
+            elsif ($line =~ m[^---\s+([^\s]+)\s+(.+)$]) {
+                ($from_file, $from_time) = ($1, $2);
+            }
+            elsif ($line =~ m[^\+\+\+\s+([^\s]+)\s+(.+)$]) {
+                ($to_file, $to_time) = ($1, $2);
+            }
+            else {
+                next if !$hunk;
+                ($hunk->{from_file}, $hunk->{to_file},
+                 $hunk->{from_time}, $hunk->{to_time}
+                ) = ($from_file, $to_file, $from_time, $to_time);
+                push @{$hunk->{data}}, $line;
+            }
+        }
+
+        #
+        push @{$patch{$to_file}{hunks}}, $hunk;
+        return \%patch;
+    }
+
+    sub _patch_dir {
+        my ($dir, $patches) = @_;
+        my $tally;
+        require File::Spec;
+        for my $file (keys %$patches) {
+            my $abs = File::Spec->catfile($dir, $file);
+            my $orig = sub {
+                open my $FH, '<', shift || return;
+                sysread $FH, my $DAT, -s $FH;
+                $DAT;
+                }
+                ->($abs) || die 'Failed to slurp ' . $abs;
+            my @orig = split /^/m, $orig;
+            my $data = _patch_data(\@orig, $patches->{$file}{'hunks'});
+            $tally += sub {
+                open my $FH, '>', shift || return;
+                syswrite $FH, shift;
+                }
+                ->($abs, $data);
+        }
+        return $tally;
+    }
+
+    sub _patch_data {
+        my ($text, $hunks) = @_;
+        for my $hunk (reverse @$hunks) {
+            my @pdata;
+            my $num = $hunk->{from_pos};
+            for (@{$hunk->{data}}) {
+                my ($first, $line) = (m[^([ \-\+])(.*)$]s) or next;
+                if ($first ne '+') {
+                    my ($orig)   = ($text->[$num++] =~ m[^(.+?)(\r\n|\n)$]);
+                    my ($expect) = ($line           =~ m[^(.+?)(\r\n|\n)$]);
+                    next if !$orig || !$expect;
+                    return !
+                        sprintf
+                        <<'END', $num, $orig, $expect if $orig ne $expect
+Files differ at line %d!
+    Expected: %s
+    Actual:   %s
+END
+                }
+                next if $first eq '-';
+                push @pdata, $line;
+            }
+            splice @$text, $hunk->{from_pos}, $hunk->{from_len}, @pdata;
+        }
+        return join '', @$text;
+    }
+
+    sub fltk_patches {
+        my $s = shift;
+        my $toolkit
+            = $^O eq 'MSWin32' ? 'win32'
+            : $^O eq 'darwin'  ? 'darwin'
+            :                    'unix';
+        my @patches;
+        find {
+            wanted => sub {
+                return if -d;
+                return if !m[$toolkit];
+                push @patches, $File::Find::name;
+            },
+            no_chdir => 1
+            },
+            $s->base_dir() . '/patches';
+        @patches;
     }
     1;
 }
