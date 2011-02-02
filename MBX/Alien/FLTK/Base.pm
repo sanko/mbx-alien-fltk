@@ -274,7 +274,7 @@ int main ( ) {
                 my $print = '';
                 for my $key (@defines) {
                     $print
-                        .= '#ifdef ' 
+                        .= '#ifdef '
                         . $key . "\n"
                         . '    printf("'
                         . $key
@@ -1161,7 +1161,7 @@ END
     sub ACTION_write_config_yml {
         my ($self) = @_;
         $self->depends_on('configure');
-        require Module::Build::YAML;
+        require YAML::Tiny;
         printf 'Updating %s config... ', $self->module_name;
         my $me        = ($self->notes('config_yml'));
         my $mode_orig = 0644;
@@ -1180,7 +1180,7 @@ END
                               $me, $!
                              }
             );
-        syswrite($YML, Module::Build::YAML::Dump(\%{$self->notes()}))
+        syswrite($YML, YAML::Tiny::Dump(\%{$self->notes()}))
             || $self->_error(
                          {stage   => 'config.yml creation',
                           fatal   => 1,
