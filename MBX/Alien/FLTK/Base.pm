@@ -1394,7 +1394,6 @@ END
     sub ACTION_patch_fltk {
         my $s = shift;
         return if $s->notes('fltk_patched');
-        $s->notes('fltk_patched', gmtime());
         my $cwd = _abs(_cwd());
         if (!chdir $s->base_dir()) {
             print 'Failed to cd to base directory';
@@ -1406,9 +1405,9 @@ END
         for my $patch (@patches) {
             printf 'Applying %s... ', _rel($patch);
             printf ucfirst "%sokay\n",
-                $s->_patch_dir($s->notes('extract'), $s->_parse_diff($patch))
-                ? ''
-                : 'not ';
+                $s->_patch_dir($s->fltk_dir, $s->_parse_diff($patch))
+                ? [$s->notes('fltk_patched', gmtime()),'']->[1]
+                : [$s->notes('fltk_patched', 0), 'not ']->[1];
         }
     }
 
@@ -1470,20 +1469,20 @@ END
         require File::Spec;
         for my $file (keys %$patches) {
             my $abs = File::Spec->catfile($dir, $file);
-            my $orig = sub {
-                open my $FH, '<', _abs(shift) || return '';
-                sysread($FH, my $DAT, -s $FH) == -s $FH
-                    || die 'Failed to slurp ' . _abs($abs) . ' | ' . $!;
-                $DAT;
-                }
-                ->($abs);
+            warn $abs;
+            my $orig;
+            {   open (my $FH, '<',
+                _abs($abs)) || die 'Failed to open ' . _abs($abs) . ' for patching | ' . $!;
+                sysread($FH, $orig, -s $FH) == -s $FH || die 'Failed to slurp ' . _abs($abs) . ' | ' . $!;
+                close $FH;
+            }
             my @orig = split /^/m, $orig;
-            my @data = $s->_patch_data(\@orig, $patches->{$file}{'hunks'});
+            my $data = $s->_patch_data(\@orig, $patches->{$file}{'hunks'});
             $tally += sub {
                 open my $FH, '>', shift || return;
                 syswrite $FH, shift;
                 }
-                ->($abs, join '', @data) if @data;
+                ->($abs, join '', @$data) if $data;
         }
         return $tally;
     }
@@ -1504,7 +1503,7 @@ END
                     my ($expect) = ($line           =~ m[^(.+?)(\r\n|\n)$]);
                     next if !$orig || !$expect;
                     return !
-                        sprintf
+                        printf
                         <<'END', $num, $orig, $expect if $orig ne $expect
 Files differ at line %d!
     Expected: %s
@@ -1516,7 +1515,7 @@ END
             }
             splice @$text, $hunk->{from_pos}, $hunk->{from_len}, @pdata;
         }
-        return @$text;
+        return $text;
     }
 
     sub fltk_patches {
