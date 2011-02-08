@@ -1469,7 +1469,6 @@ END
         require File::Spec;
         for my $file (keys %$patches) {
             my $abs = File::Spec->catfile($dir, $file);
-            warn $abs;
             my $orig;
             {   open (my $FH, '<',
                 _abs($abs)) || die 'Failed to open ' . _abs($abs) . ' for patching | ' . $!;
