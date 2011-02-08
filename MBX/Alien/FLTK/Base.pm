@@ -56,7 +56,7 @@ package inc::MBX::Alien::FLTK::Base;
             close $FH;
             $self->add_to_cleanup($args->{'source'});
         }
-        open(my ($OLDERR), ">&STDERR");
+        #open(my ($OLDERR), ">&STDERR");
 
         #close *STDERR if $cbuilder->{'quiet'};
         my $obj = eval {
@@ -73,8 +73,8 @@ package inc::MBX::Alien::FLTK::Base;
                   )
             );
         };
-        open(*STDERR, '>&', $OLDERR)
-            || exit !print "Couldn't restore STDERR: $!\n";
+        #open(*STDERR, '>&', $OLDERR)
+        #    || exit !print "Couldn't restore STDERR: $!\n";
         return $obj ? $obj : ();
     }
 
