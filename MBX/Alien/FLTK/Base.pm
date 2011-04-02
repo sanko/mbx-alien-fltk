@@ -319,7 +319,7 @@ return 0;
             $self->notes('define')->{'USE_X11_MULTITHREADING'} = 0;
             $self->notes('define')->{'USE_XFT'}                = 0;
             $self->notes('define')->{'USE_CAIRO'}
-                = ($self->notes('branch') eq '2.0.x' ? 0 : undef);
+                = ($self->notes('branch') =~ '2.0.x' ? 0 : undef);
             $self->notes('define')->{'USE_CLIPOUT'}      = 0;
             $self->notes('define')->{'USE_XSHM'}         = 0;
             $self->notes('define')->{'HAVE_XDBE'}        = 0;
