@@ -28,6 +28,7 @@ package inc::MBX::Alien::FLTK::Platform::Windows;
         #$self->notes('define')->{'HAVE_SYS_DIR_H'}  = undef;
         #$self->notes('define')->{'HAVE_NDIR_H'}     = undef;
         $self->notes('define')->{'HAVE_SCANDIR'} = undef;
+        $self->notes('define')->{'HAVE_DIRENT'}  = 0;
     GL: {
             last if grep {m[^no_gl$]} @args;
             print 'Testing GL Support... ';

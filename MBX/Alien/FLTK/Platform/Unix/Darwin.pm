@@ -54,7 +54,8 @@ package inc::MBX::Alien::FLTK::Platform::Unix::Darwin;
         print 'Locating library archiver... ';
         open(my ($OLDOUT), ">&STDOUT");
         close *STDOUT;
-        my ($ar) = grep { defined $_ } can_run($Config{'gar'}), can_run($Config{'ar'});
+        my ($ar) = grep { defined $_ } can_run($Config{'gar'}),
+            can_run($Config{'ar'});
         open(*STDOUT, '>&', $OLDOUT)
             || exit !print "Couldn't restore STDOUT: $!\n";
         if (!$ar) {

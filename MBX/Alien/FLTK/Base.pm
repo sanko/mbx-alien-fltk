@@ -56,8 +56,8 @@ package inc::MBX::Alien::FLTK::Base;
             close $FH;
             $self->add_to_cleanup($args->{'source'});
         }
-        #open(my ($OLDERR), ">&STDERR");
 
+        #open(my ($OLDERR), ">&STDERR");
         #close *STDERR if $cbuilder->{'quiet'};
         my $obj = eval {
             $cbuilder->compile(
@@ -73,6 +73,7 @@ package inc::MBX::Alien::FLTK::Base;
                   )
             );
         };
+
         #open(*STDERR, '>&', $OLDERR)
         #    || exit !print "Couldn't restore STDERR: $!\n";
         return $obj ? $obj : ();
@@ -274,7 +275,7 @@ int main ( ) {
                 my $print = '';
                 for my $key (@defines) {
                     $print
-                        .= '#ifdef '
+                        .= '#ifdef ' 
                         . $key . "\n"
                         . '    printf("'
                         . $key
@@ -1406,7 +1407,7 @@ END
             printf 'Applying %s... ', _rel($patch);
             printf ucfirst "%sokay\n",
                 $s->_patch_dir($s->fltk_dir, $s->_parse_diff($patch))
-                ? [$s->notes('fltk_patched', gmtime()),'']->[1]
+                ? [$s->notes('fltk_patched', gmtime()), '']->[1]
                 : [$s->notes('fltk_patched', 0), 'not ']->[1];
         }
     }
@@ -1470,9 +1471,14 @@ END
         for my $file (keys %$patches) {
             my $abs = File::Spec->catfile($dir, $file);
             my $orig;
-            {   open (my $FH, '<',
-                _abs($abs)) || die 'Failed to open ' . _abs($abs) . ' for patching | ' . $!;
-                sysread($FH, $orig, -s $FH) == -s $FH || die 'Failed to slurp ' . _abs($abs) . ' | ' . $!;
+            {
+                open(my $FH, '<', _abs($abs))
+                    || die 'Failed to open '
+                    . _abs($abs)
+                    . ' for patching | '
+                    . $!;
+                sysread($FH, $orig, -s $FH) == -s $FH
+                    || die 'Failed to slurp ' . _abs($abs) . ' | ' . $!;
                 close $FH;
             }
             my @orig = split /^/m, $orig;
