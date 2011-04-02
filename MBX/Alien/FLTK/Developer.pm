@@ -11,43 +11,6 @@ package inc::MBX::Alien::FLTK::Developer;
     use File::Path qw[make_path];
     use base 'inc::MBX::Alien::FLTK';
 
-    sub new {
-        my $class = shift;
-        my $self  = $class->SUPER::new(@_);
-        $self->metafile('META.json') if $self->metafile eq 'META.yml';
-        return $self;
-    }
-
-    sub write_metafile {
-        my $s = shift;
-        return if !eval 'require CPAN::Meta::Converter';
-        return if !eval 'require CPAN::Meta::Validator';
-        return if !eval 'require JSON';
-        JSON->VERSION(2);
-        my $data = {};
-        $s->prepare_metadata($data);
-        $data->{'meta-spec'} = {    # In reality, it's probably a hybrid...
-                 url     => 'http://search.cpan.org/perldoc?CPAN::Meta::Spec',
-                 version => 2
-        };
-        my $metafile = $s->metafile;
-        my $cmc      = CPAN::Meta::Converter->new($data);   # ...so we convert
-        $data = $cmc->convert(version => 2);    # ...and clean it up here
-        my $cmv = CPAN::Meta::Validator->new($data);
-        say $_    # ...and double check the result
-            for $cmv->is_valid
-            ? ()
-            : 'Invalid META structure. Errors found:', $cmv->errors;
-        $data->{generated_by} = 'Conversion, Software version 7.0';
-        open my ($fh), '>',    # ...and eventually save it to disk.
-            $metafile || die "can't open $metafile for writing: $!";
-        syswrite $fh, JSON->new->ascii(1)->pretty->canonical(1)->encode($data)
-            || die "can't print metadata to $metafile: $!";
-        close $fh || die "error closing $metafile: $!";
-        $s->{'wrote_metadata'} = 1;
-        $s->_add_to_manifest('MANIFEST', $metafile);
-    }
-
     sub make_tarball {
         my ($self, $dir, $file, $quiet) = @_;
         $file ||= $dir;
@@ -102,8 +65,8 @@ package inc::MBX::Alien::FLTK::Developer;
 
         # start changing the data around
         $CHANGES_D =~ s[.+(\r?\n)][$dist$1];
-        $CHANGES_D
-            =~ s[(_ -.-. .... .- -. --. . ... _+).*][$1 . sprintf <<'END',
+        $CHANGES_D =~
+            s[(_ -.-. .... .- -. --. . ... _+).*][$1 . sprintf <<'END',
         $self->{'properties'}{'meta_merge'}{'resources'}{'ChangeLog'}||'', '$',
         $self->dist_version , qw[$ $ $ $ $ $ $]
     ]se;
@@ -173,9 +136,8 @@ END
             my $_Commit       = $bits[1];
             my $_Commit_short = substr($bits[1], 0, 7);
             my $_Id           = sprintf $bits[2], (_split($file))[2], $_Date;
-            my $_Repo
-                = $self->{'properties'}{'meta_merge'}{'resources'}
-                {'repository'}
+            my $_Repo =
+                $self->{'properties'}{'meta_merge'}{'resources'}{'repository'}
                 || '';
 
             # start changing the data around
@@ -183,11 +145,11 @@ END
             $CHANGES_D =~ s[\$(Id)(:[^\$]*)?\$][\$$1: $_Id \$]ig;
             $CHANGES_D =~ s[\$(Date)(:[^\$]*)?\$][\$$1: $_Date \$]ig;
             $CHANGES_D =~ s[\$(Mod(ified)?)(:[^\$]*)?\$][\$$1: $_Mod \$]ig;
-            $CHANGES_D
-                =~ s[\$(Url)(:[^\$]*)?\$][\$$1: $_Repo/raw/master/$file \$]ig
+            $CHANGES_D =~
+                s[\$(Url)(:[^\$]*)?\$][\$$1: $_Repo/raw/master/$file \$]ig
                 if $_Repo;
-            $CHANGES_D
-                =~ s[\$(Rev(ision)?)(?::[^\$]*)?\$]["\$$1: ". ($2?$_Commit:$_Commit_short)." \$"]ige;
+            $CHANGES_D =~
+                s[\$(Rev(ision)?)(?::[^\$]*)?\$]["\$$1: ". ($2?$_Commit:$_Commit_short)." \$"]ige;
 
             # Skip to the next file if this one wasn't updated
             next FILE if $CHANGES_D eq $CHANGES_O;
