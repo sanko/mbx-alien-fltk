@@ -727,25 +727,26 @@ int main () {
             for my $src (sort { lc $a cmp lc $b } @{$libs->{$lib}{'source'}})
             {   my $obj = _o($src);
                 $obj
-                    = $build->up_to_date($src, $obj)
-                    ? $obj
+                    = $build->up_to_date($src, $obj) ?
+                    $obj
                     : sub {
                     print "Compiling $src...\n";
-                    return
-                        $self->compile({source       => $src,
-                                        include_dirs => [keys %include_dirs],
-                                        extra_compiler_flags =>
-                                            join(' ',
-                                                 $Config{'ccflags'},
-                                                 '-MD',
-                                                 (  $src =~ m[\.c$]
-                                                  ? $self->notes('cflags')
-                                                  : $self->notes('cxxflags')
-                                                 )
-                                            ),
-                                        output => $obj,
-                                       }
-                        );
+                    return $self->compile(
+                        {source               => $src,
+                         include_dirs         => [keys %include_dirs],
+                         extra_compiler_flags => join(
+                             ' ',
+                             $Config{'ccflags'},
+                             '-MD',
+                             ($src =~ m[\.c$] ?
+                                  $self->notes('cflags')
+                              : $self->notes('cxxflags')
+                             ),
+                             '-DFL_LIBRARY',    # fltk 1.3.x
+                         ),
+                         output => $obj,
+                        }
+                    );
                     }
                     ->();
                 if (!$obj) {
