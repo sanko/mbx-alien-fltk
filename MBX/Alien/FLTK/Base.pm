@@ -22,7 +22,9 @@ package inc::MBX::Alien::FLTK::Base;
     sub archive {
         my ($self, $args) = @_;
         my $arch = $args->{'output'};
-        my @cmd = ($self->notes('AR'), $arch, @{$args->{'objects'}});
+        my @cmd = ($self->notes('AR'), $arch,
+                   map { _rel($_) } @{$args->{'objects'}}
+        );
         print STDERR "@cmd\n" if !$self->quiet;
         return run(@cmd) ? $arch : ();
     }
@@ -47,8 +49,8 @@ package inc::MBX::Alien::FLTK::Base;
                                      undef, SUFFIX => '.cpp'    #, UNLINK => 1
             );
             syswrite($FH,
-                     ($args->{'code'}
-                      ? delete $args->{'code'}
+                     ($args->{'code'} ?
+                          delete $args->{'code'}
                       : 'int main(){return 0;}'
                          )
                          . "\n"
@@ -169,8 +171,8 @@ package inc::MBX::Alien::FLTK::Base;
             'image_flags' => (
 
                 #"-lpng -lfltk2_images -ljpeg -lz"
-                $self->notes('branch') eq '1.3.x'
-                ? ' -lfltk_images '
+                $self->notes('branch') eq '1.3.x' ?
+                    ' -lfltk_images '
                 : ' -lfltk2_images '
             )
         );
@@ -205,7 +207,6 @@ int main ( ) {
                 $sizeof{$type} = $exe ? `$exe` : 0;
                 print "okay\n";
             }
-
             #
             if ($sizeof{'short'} == 2) {
                 $self->notes('define')->{'U16'} = 'unsigned short';
@@ -275,7 +276,7 @@ int main ( ) {
                 my $print = '';
                 for my $key (@defines) {
                     $print
-                        .= '#ifdef ' 
+                        .= '#ifdef '
                         . $key . "\n"
                         . '    printf("'
                         . $key
@@ -363,12 +364,12 @@ return 0;
             $self->notes('define')->{'HAVE_STRLCPY'}     = undef;
             $self->notes('define')->{'HAVE_STRNCASECMP'} = undef;
             $self->notes('define')->{'HAVE_SYS_SELECT_H'}
-                = $self->assert_lib({headers => ['sys/select.h']})
-                ? 1
+                = $self->assert_lib({headers => ['sys/select.h']}) ?
+                1
                 : undef;
             $self->notes('define')->{'HAVE_SYS_STDTYPES_H'}
-                = $self->assert_lib({headers => ['sys/stdtypes.h']})
-                ? 1
+                = $self->assert_lib({headers => ['sys/stdtypes.h']}) ?
+                1
                 : undef;
             $self->notes('define')->{'USE_POLL'} = 0;
             {
@@ -379,7 +380,6 @@ return 0;
 #ifdef __cplusplus
 extern "C"
 #endif
-char png_read_rows ( );
 int main ( ) { return png_read_rows( ); return 0;}
 
                     $self->notes('define')->{'HAVE_LIBPNG'} = 1;
@@ -391,7 +391,6 @@ int main ( ) { return png_read_rows( ); return 0;}
 #ifdef __cplusplus
 extern "C"
 #endif
-char png_read_rows ( );
 int main ( ) { return png_read_rows( ); return 0;}
 
                     $self->notes('define')->{'HAVE_LIBPNG'}      = 1;
@@ -404,15 +403,14 @@ int main ( ) { return png_read_rows( ); return 0;}
 #ifdef __cplusplus
 extern "C"
 #endif
-char png_read_rows ( );
 int main ( ) { return png_read_rows( ); return 0;}
 
                     $self->notes('define')->{'HAVE_LIBPNG'} = 1;
                     $png_lib .= ' -lpng ';
                 }
                 else {
-                    $png_lib .= ($self->notes('branch') eq '1.3.x'
-                                 ? ' -lfltk_png '
+                    $png_lib .= ($self->notes('branch') eq '1.3.x' ?
+                                     ' -lfltk_png '
                                  : ' -lfltk2_png '
                     );
                 }
@@ -427,8 +425,8 @@ int main () { return gzopen( ); return 0; }
                     $png_lib .= ' -lz ';
                 }
                 else {
-                    $png_lib .= ($self->notes('branch') eq '1.3.x'
-                                 ? ' -lfltk_z '
+                    $png_lib .= ($self->notes('branch') eq '1.3.x' ?
+                                     ' -lfltk_z '
                                  : ' -lfltk2_z '
                     );
                 }
@@ -448,7 +446,6 @@ int main () { return gzopen( ); return 0; }
 #ifdef __cplusplus
 extern "C"
 #endif
-char jpeg_destroy_decompress ( );
 int main ( ) { return jpeg_destroy_decompress( ); return 0;}
 
                     $self->notes('define')->{'HAVE_LIBJPEG'} = 1;
@@ -460,7 +457,6 @@ int main ( ) { return jpeg_destroy_decompress( ); return 0;}
 #ifdef __cplusplus
 extern "C"
 #endif
-char jpeg_destroy_decompress ( );
 int main ( ) { return jpeg_destroy_decompress( ); return 0;}
 
                     $self->notes('define')->{'HAVE_LIBJPEG'}      = 1;
@@ -473,15 +469,14 @@ int main ( ) { return jpeg_destroy_decompress( ); return 0;}
 #ifdef __cplusplus
 extern "C"
 #endif
-char jpeg_destroy_decompress ( );
 int main ( ) { return jpeg_destroy_decompress( ); return 0;}
 
                     $self->notes('define')->{'HAVE_LIBJPEG'} = 1;
                     $jpeg_lib .= ' -ljpeg ';
                 }
                 else {
-                    $jpeg_lib .= ($self->notes('branch') eq '1.3.x'
-                                  ? ' -lfltk_jpeg '
+                    $jpeg_lib .= ($self->notes('branch') eq '1.3.x' ?
+                                      ' -lfltk_jpeg '
                                   : ' -lfltk2_jpeg '
                     );
                 }
@@ -492,12 +487,11 @@ int main ( ) { return jpeg_destroy_decompress( ); return 0;}
                     # XXX - Disable building qr[fltk2?_z]?
                 }
                 else {
-
        #? ' -lfltk_images -lfltk_png -lfltk_z -lfltk_images -lfltk_jpeg '
        #: ' -lfltk2_images -lfltk2_png -lfltk2_z -lfltk2_images -lfltk2_jpeg '
                     $self->notes('image_flags' => $self->notes('image_flags')
-                                     . ($self->notes('branch') eq '1.3.x'
-                                        ? ' -lfltk_z'
+                                     . ($self->notes('branch') eq '1.3.x' ?
+                                            ' -lfltk_z'
                                         : ' -lfltk2_z'
                                      )
                     );
@@ -555,7 +549,6 @@ int main ( ) {
                     print "no\n";    # But we can pretend...
                 }
             }
-
             #
             $self->notes('define')->{'HAVE_LOCAL_PNG_H'}
                 = $self->notes('define')->{'HAVE_LIBPNG'} ? undef : 1;
@@ -769,8 +762,8 @@ int main () {
             my $_lib = _rel($build->fltk_dir('lib/' . _a($lib)));
             printf 'Archiving %s... ', $lib;
             $_lib
-                = $build->up_to_date(\@obj, $_lib)
-                ? $_lib
+                = $build->up_to_date(\@obj, $_lib) ?
+                $_lib
                 : $self->archive({output  => _abs($_lib),
                                   objects => \@obj
                                  }
@@ -793,8 +786,8 @@ int main () {
     sub ACTION_fetch_fltk {
         my ($self, %args) = @_;
         my ($dir, $archive, $extention);
-        $args{'to'} = (defined $args{'to'}
-                       ? $args{'to'}
+        $args{'to'} = (defined $args{'to'} ?
+                           $args{'to'}
                        : $self->notes('snapshot_dir')
         );
         unshift @INC, (_path($self->base_dir, 'lib'));
@@ -976,7 +969,8 @@ END
             = eval 'require '
             . $self->module_name
             && $self->module_name->can('_snapshot_mirrors')
-            ? $self->module_name->_snapshot_mirrors()
+            ?
+            $self->module_name->_snapshot_mirrors()
             : {
             'California, USA' => 'ftp.easysw.com/pub',
             'New Jersey, USA' => 'ftp2.easysw.com/pub',
@@ -1054,7 +1048,8 @@ END
                $key,
                $self->notes('branch'),
                $key && $self->module_name->can('_git_rev')
-               ? $self->module_name->_git_rev()
+               ?
+               $self->module_name->_git_rev()
                : 'r' . $self->notes('svn')
             )
             )
@@ -1079,8 +1074,8 @@ END
                      'fltk_dir' => _abs $args{'to'} . sprintf '/%sfltk-%s-%s',
                      $key,
                      $self->notes('branch'),
-                     $key
-                     ? $self->module_name->_git_rev()
+                     $key ?
+                         $self->module_name->_git_rev()
                      : 'r' . $self->notes('svn')
             );
             print "done.\n";
@@ -1127,14 +1122,14 @@ END
                 my %config = %{$self->notes('define')};
                 for my $key (
                     sort {
-                        $config{$a} && $config{$a} =~ m[^HAVE_]
-                            ? ($b cmp $a)
+                        $config{$a} && $config{$a} =~ m[^HAVE_] ?
+                            ($b cmp $a)
                             : ($a cmp $b)
                     } keys %config
                     )
                 {   $config .=
-                        sprintf((defined $config{$key}
-                                 ? '#define %-25s %s'
+                        sprintf((defined $config{$key} ?
+                                     '#define %-25s %s'
                                  : '#undef  %-35s'
                                 )
                                 . "\n",
@@ -1263,13 +1258,12 @@ END
         $self->notes(errors => []);    # Reset fatal and non-fatal errors
     }
     {
-
         # Ganked from Devel::CheckLib
         sub assert_lib {
             my ($self, $args) = @_;
 
             # Defaults
-            $args->{'code'}         ||= 'int main( ) { return 0; }';
+            $args->{'code'}         ||= "int main( ) { return 0; }\n";
             $args->{'include_dirs'} ||= ();
             $args->{'lib_dirs'}     ||= ();
             $args->{'headers'}      ||= ();
@@ -1278,42 +1272,51 @@ END
             #use Data::Dumper;
             #warn Dumper $args;
             # first figure out which headers we can' t find...
-            for my $header (@{$args->{'headers'}}) {
-                printf 'Trying to compile with %s... ', $header;
+        HEADER: for my $header (@{$args->{'headers'}}) {
+
+                #printf 'Trying to compile with %s... ', $header;
                 push @{$args->{'include_dirs'}}, $self->find_h($header);
                 if ($self->compile(
-                            {code => "#include <$header>\n" . $args->{'code'},
-                             include_dirs => [
-                                          $args->{'include_dirs'},
-                                          $self->find_h($header),
-                                          keys %{$self->notes('include_dirs')}
-                             ],
-                             lib_dirs => [$args->{'lib_dirs'},
-                                          keys %{$self->notes('lib_dirs')}
-                             ]
-                            }
+                        {code => "#include <$header>\n" . $args->{'code'},
+                         include_dirs => [
+
+                             #$self->find_h($header),
+                             @{$args->{'include_dirs'}},
+                             keys %{$self->notes('include_dirs')}
+                         ],
+                         lib_dirs => [grep {defined} $args->{'lib_dirs'},
+                                      keys %{$self->notes('lib_dirs')}
+                         ]
+                        }
                     )
                     )
                 {   print "okay\n";
                     next;
                 }
-                print "Cannot include $header\n";
-                return 0;
+                else {
+                    print "Cannot include $header\n";
+                    return 0;
+                }
             }
 
             # now do each library in turn with no headers
             for my $lib (@{$args->{'libs'}}) {
-                printf 'Trying to link with %s... ', $lib;
+
+                #printf 'Trying to link with %s... ', $lib;
                 if ($self->test_exe(
                            {code =>
                                 join("\n",
                                 (map {"#include <$_>"} @{$args->{'headers'}}),
                                 $args->{'code'}),
                             include_dirs => [
-                                          $args->{'include_dirs'},
+                                          ($args->{'include_dirs'}
+                                           ?
+                                               @{$args->{'include_dirs'}}
+                                           : ()
+                                          ),
                                           keys %{$self->notes('include_dirs')}
                             ],
-                            lib_dirs => [$args->{'lib_dirs'},
+                            lib_dirs => [grep {defined} $args->{'lib_dirs'},
                                          keys %{$self->notes('lib_dirs')},
                                          $self->find_lib($lib)
                             ],
