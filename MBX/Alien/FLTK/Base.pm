@@ -673,6 +673,7 @@ int main () {
         my ($ar) = grep { run("$_ V") } can_run($Config{'ar'});
         open(*STDOUT, '>&', $OLDOUT)
             || exit !print "Couldn't restore STDOUT: $!\n";
+        $ar = `which ar` if !$ar;
         if (!$ar) {
             print "Could not find the library archiver, aborting.\n";
             exit 0;
